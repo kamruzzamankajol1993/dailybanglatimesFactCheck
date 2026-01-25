@@ -29,9 +29,11 @@
     @endif
    
     <title>@yield('title')</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Poppins:wght@300;400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('/') }}public/front/css/style.css">
     <link rel="shortcut icon" href="{{ $front_admin_url }}{{ $front_icon_name }}">
       @yield('css')
@@ -40,7 +42,7 @@
 
 
     <!-- Top Header Include -->
-    {{-- @include('front.include.topHeader') --}}
+ @include('front.include.topHeader') 
     <!-- End Top Header Include -->
 
      <!-- Header include -->
@@ -48,13 +50,15 @@
     <!-- End Header include -->
 
     <!-- Headline Include -->
-    @include('front.include.headline')
+    {{-- @include('front.include.headline') --}}
     <!-- End Headline Include -->
 
     <!-- Last Header Include -->
     @include('front.include.lastHeader')
     <!-- End Last Header Include -->
-
+  <!-- Offcanvas Include -->
+    @include('front.include.offcanvas')
+    <!-- End Offcanvas Include -->
 
     <!-- Main Content -->
     @yield('body')
@@ -64,9 +68,7 @@
     @include('front.include.footer')
     <!-- End Footer Include -->
 
-    <!-- Offcanvas Include -->
-    @include('front.include.offcanvas')
-    <!-- End Offcanvas Include -->
+  
    
    
     
@@ -75,40 +77,20 @@
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-   
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var desktopNav = document.querySelector('.samakal-nav-wrapper'); // ক্লাস নেম আপডেট করা হয়েছে
-        var body = document.body;
-        var navPlaceholder = document.createElement("div");
-
-        if (desktopNav) {
-            navPlaceholder.style.height = desktopNav.offsetHeight + "px";
-            navPlaceholder.style.display = "none";
-            desktopNav.parentNode.insertBefore(navPlaceholder, desktopNav);
+  
+    <script>
+        function updateDateTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+            };
+            const dateStr = now.toLocaleString('bn-BD', options);
+            document.getElementById('bengali-date').textContent = dateStr + " (বিএসটি)";
         }
-
-        function handleStickyNavigation() {
-            var width = window.innerWidth;
-            var scrollPosition = window.scrollY;
-
-            if (width >= 992) {
-                var triggerHeight = 160; // লোগো পার হওয়ার পর স্টিকি হবে
-
-                if (scrollPosition > triggerHeight) {
-                    desktopNav.classList.add('sticky-nav-desktop'); // CSS ক্লাস যোগ হবে
-                    navPlaceholder.style.display = "block"; // লাফানো বন্ধ করতে
-                } else {
-                    desktopNav.classList.remove('sticky-nav-desktop'); // CSS ক্লাস রিমুভ হবে
-                    navPlaceholder.style.display = "none";
-                }
-            }
-        }
-
-        window.addEventListener('scroll', handleStickyNavigation);
-        window.addEventListener('resize', handleStickyNavigation);
-    });
-</script>
+        updateDateTime();
+        setInterval(updateDateTime, 1000); 
+    </script>
   @yield('scripts')
 </body>
 </html>

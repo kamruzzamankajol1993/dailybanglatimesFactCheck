@@ -5,186 +5,184 @@
 @endsection
 
 @section('css')
-<style>
-    /* লোডার ডিজাইন */
-    #loader-area {
-        padding: 40px 0;
-        text-align: center;
-    }
-    .spinner-border {
-        width: 3rem;
-        height: 3rem;
-        color: #dc3545; /* Red Color */
-    }
-    
-    /* ট্রানজিশন এফেক্ট */
-    .fade-in-section {
-        animation: fadeIn 0.8s;
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
 
-    /* Date Style - Small Font */
-    .bangla-date {
-        font-size: 11px;
-        color: green;
-        display: block;
-        margin-top: 3px;
-    }
-</style>
 @endsection
 
 @section('body')
-  
-   {{-- ========================================================= --}}
-   {{-- ১. সার্ভার সাইড লোডিং (Top Section - SEO Friendly)        --}}
-   {{-- ========================================================= --}}
-   <section class="main-content py-4">
+   <section class="hero-area">
+        <div class="container text-center">
+            <h1 class="display-4 mb-3 fw-bold">কোনো খবর নিয়ে সন্দেহ?</h1>
+            <p class="lead mb-5 opacity-75">ইন্টারনেটে যা দেখছেন তা কি সত্যি? যাচাই করতে সার্চ করুন।</p>
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <ul class="nav nav-tabs border-0 justify-content-center mb-4" id="myTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="search-tab" data-bs-toggle="tab" data-bs-target="#search" type="button"><i class="fas fa-search me-2"></i>সার্চ করুন</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button"><i class="fas fa-paper-plane me-2"></i>রিপোর্ট পাঠান</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="myTabContent">
+                        <div class="tab-pane fade show active" id="search" role="tabpanel">
+                            <div class="search-box">
+                                <form class="d-flex shadow-sm rounded-3 overflow-hidden">
+                                    <input class="form-control form-control-lg border-0 rounded-0 ps-4" type="search" placeholder="কীওয়ার্ড লিখুন (যেমন: পদ্মা সেতু ফাটল)...">
+                                    <button class="btn btn-danger px-4 fw-bold rounded-0" type="submit">খুঁজুন</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="upload" role="tabpanel">
+                            <div class="upload-box text-start">
+                                <form>
+                                    <div class="mb-3"><input type="text" class="form-control" placeholder="সন্দেহজনক খবরের লিংক দিন অথবা টাইটেল লিখুন..."></div>
+                                    <div class="mb-3"><input type="file" class="form-control"></div>
+                                    <div class="d-grid"><button type="submit" class="btn btn-primary fw-bold">যাচাইয়ের জন্য সাবমিট করুন</button></div>
+                                </form>
+                            </div>
+                        </div>
+                    </div> 
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-5 bg-white">
         <div class="container">
-            <div class="row g-4 align-items-stretch">
+            <div class="d-flex justify-content-between align-items-center mb-5">
+                <div>
+                    <h2 class="text-dark fw-bold mb-1">সাম্প্রতিক ফ্যাক্ট-চেক</h2>
+                    <div class="bg-danger" style="width: 60px; height: 3px;"></div>
+                </div>
+                <a href="#" class="btn btn-outline-danger btn-sm rounded-pill px-3">সব দেখুন <i class="fas fa-arrow-right ms-1"></i></a>
+            </div>
+            
+            <div class="row g-3 g-md-4">
                 
-                {{-- কলাম ১: ম্যাডাম নিউজ (বাম পাশ) --}}
-                <div class="col-lg-3 col-md-6 order-2 order-lg-1 d-none d-lg-flex flex-column">
-                    <div class="card border-0 mb-3 news-card shadow-sm h-auto flex-shrink-0">
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card h-100 border-0 shadow-sm">
                         <div class="position-relative">
-                            <img  onerror="this.onerror=null;this.src='{{ $front_admin_url }}{{ $front_logo_name }}';" src="{{$front_admin_url}}{{$front_madam_image}}" class="card-img-top rounded-0" alt="News">
+                            <img src="https://placehold.co/600x400/png?text=Fake+Bridge" class="card-img-top" alt="...">
+                            <span class="news-badge badge-fake"><i class="fas fa-times-circle me-1"></i> মিথ্যা</span>
                         </div>
-                    </div>
-                    
-                   <div class="left-news-list bg-white shadow-sm p-2 flex-grow-1 d-flex flex-column justify-content-between">
-                        @if(isset($madamUnderNews) && count($madamUnderNews) > 0)
-                            @foreach($madamUnderNews as $news)
-                                <div class="d-flex {{ $loop->last ? 'mb-0 pb-0' : 'mb-2 border-bottom pb-2' }} align-items-start">
-                                    <img  onerror="this.onerror=null;this.src='{{ $front_admin_url }}{{ $front_logo_name }}';" src="{{ $news->image ? $front_admin_url.$news->image : 'https://placehold.co/90x60/333/fff?text=News' }}" 
-                                         class="me-2 rounded-1 flex-shrink-0" width="90" height="60" style="object-fit: cover;">
-                                    <div class="w-100">
-                                        @if($news->subtitle) <div class="news-subtitle">{{ $news->subtitle }}</div> @endif
-                                        <a href="{{ route('front.news.details', $news->slug) }}" class="small fw-bold text-dark hover-red lh-sm text-decoration-none">
-                                            {{ $news->title }}
-                                        </a>
-                                        <small class="bangla-date"><i class="far fa-clock me-1"></i>{{ bangla_date($news->created_at) }}</small>
-                                    </div>
-                                </div>
-                            @endforeach
-                        @else
-                             <p class="text-center text-muted small mt-3">কোনো খবর পাওয়া যায়নি।</p>
-                        @endif
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">পদ্মা সেতুতে ফাটল ধরেছে— ভাইরাল ভিডিওটি ভুয়া</a></h5>
+                            <p class="card-text small text-muted mt-2 d-none d-sm-block">ভিডিওটি মূলত ভিয়েতনামের একটি সেতুর...</p>
+                        </div>
+                        <div class="card-footer bg-white border-0 text-muted small py-3">
+                            <i class="far fa-clock text-danger me-1"></i> ২ ঘন্টা আগে
+                        </div>
                     </div>
                 </div>
 
-                {{-- কলাম ২: স্লাইডার এবং র‍্যান্ডম নিউজ (মাঝখান) --}}
-                <div class="col-lg-5 col-md-12 order-1 order-lg-2">
-                    @if(isset($sliderPosts) && count($sliderPosts) > 0)
-                        <div id="mainSlider" class="carousel slide mb-3 shadow-sm" data-bs-ride="carousel" data-bs-interval="3000">
-                            <div class="carousel-inner">
-                                @foreach($sliderPosts as $key => $post)
-                                    <div class="carousel-item {{ $key == 0 ? 'active' : '' }}">
-                                        <img  onerror="this.onerror=null;this.src='{{ $front_admin_url }}{{ $front_logo_name }}';" src="{{ $post->image ? $front_admin_url . $post->image : 'https://placehold.co/600x380/006a4e/white?text=Slider' }}" 
-                                             class="d-block w-100 object-fit-cover" alt="{{ $post->title }}">
-                                        <div class="carousel-caption d-none d-md-block news-caption-overlay">
-                                            <h4 class="fw-bold mb-1">
-                                                <a href="{{ route('front.news.details', $post->slug) }}" class="text-white text-decoration-none">{{ $post->title }}</a>
-                                                <small class="bangla-date"><i class="far fa-clock me-1"></i>{{ bangla_date($post->created_at) }}</small>
-                                            </h4>
-                                            @if($post->subtitle)
-                                                <p class="small mb-2">{{ Str::limit($post->subtitle, 100) }}</p>
-                                            @endif
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="position-relative">
+                            <img src="https://placehold.co/600x400/png?text=Education" class="card-img-top" alt="...">
+                            <span class="news-badge badge-true"><i class="fas fa-check-circle me-1"></i> সত্য</span>
                         </div>
-                    @endif
-
-                    <div class="row g-3">
-                        @if(isset($randomNews) && count($randomNews) > 0)
-                            @foreach($randomNews as $news)
-                                <div class="col-6">
-                                    <div class="card border-0 h-100 shadow-sm">
-                                        <div class="overflow-hidden">
-                                            <img  onerror="this.onerror=null;this.src='{{ $front_admin_url }}{{ $front_logo_name }}';" src="{{ $news->image ? $front_admin_url . $news->image : 'https://placehold.co/300x180/333/fff?text=News' }}" 
-                                                 class="card-img-top rounded-0 zoom-effect" alt="{{ $news->title }}">
-                                        </div>
-                                        <div class="card-body p-2">
-                                            @if($news->subtitle) <div class="news-subtitle">{{ $news->subtitle }}</div> @endif
-                                            <h6 class="fw-bold hover-red title-truncate">
-                                                <a href="{{ route('front.news.details', $news->slug) }}" class=" hover-red text-dark text-decoration-none">{{ $news->title }}</a>
-
-                                            </h6>
-                                                                                        <small class="bangla-date"><i class="far fa-clock me-1"></i>{{ bangla_date($news->created_at) }}</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        @endif
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">নতুন শিক্ষাক্রমের প্রশিক্ষণ শুরু</a></h5>
+                            <p class="card-text small text-muted mt-2 d-none d-sm-block">মন্ত্রণালয়ের নোটিশ অনুযায়ী কাল থেকে শুরু...</p>
+                        </div>
+                        <div class="card-footer bg-white border-0 text-muted small py-3">
+                            <i class="far fa-clock text-success me-1"></i> ৫ ঘন্টা আগে
+                        </div>
                     </div>
                 </div>
 
-                {{-- কলাম ৩: লেটেস্ট ও পপুলার ট্যাব (ডান পাশ) --}}
-                <div class="col-lg-4 col-md-6 order-3 order-lg-3 d-flex flex-column">
-                    <div class="bg-white border p-0 mb-4 shadow-sm flex-grow-1 d-flex flex-column">
-                        <ul class="nav nav-pills nav-fill" id="pills-tab" role="tablist">
-                            <li class="nav-item">
-                                <button class="nav-link active rounded-0 fw-bold py-2 custom-tab-btn tab-green" id="latest-tab" data-bs-toggle="pill" data-bs-target="#latest">সর্বশেষ</button>
-                            </li>
-                            <li class="nav-item">
-                                <button class="nav-link rounded-0 fw-bold py-2 custom-tab-btn tab-red" id="popular-tab" data-bs-toggle="pill" data-bs-target="#popular">জনপ্রিয়</button>
-                            </li>
-                        </ul>
-                        
-                        <div class="tab-content p-2 custom-scrollbar flex-grow-1" style="max-height: 800px; overflow-y: auto;">
-                            {{-- Latest Tab --}}
-                            <div class="tab-pane fade show active" id="latest">
-                                @if(isset($latestPosts) && count($latestPosts) > 0)
-                                    @foreach($latestPosts as $post)
-                                        <div class="news-item border-bottom py-2 d-flex align-items-start">
-                                            <div class="flex-shrink-0">
-                                                 <img  onerror="this.onerror=null;this.src='{{ $front_admin_url }}{{ $front_logo_name }}';" src="{{ $post->image ? $front_admin_url . $post->image : 'https://placehold.co/90x60/111/fff?text=No+Image' }}" 
-                                                      class="me-2 rounded-1" width="90" height="60" style="object-fit: cover;">
-                                            </div>
-                                            <div class="w-100">
-                                                @if($post->subtitle) <div class="news-subtitle">{{ $post->subtitle }}</div> @endif
-                                                <a href="{{ route('front.news.details', $post->slug) }}" class="small fw-bold text-dark hover-red lh-sm text-decoration-none">{{ $post->title }}</a>
-                                                    <small class="bangla-date"><i class="far fa-clock me-1"></i>{{ bangla_date($post->created_at) }}</small>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                @else
-                                    <p class="text-center text-muted small mt-3">কোনো খবর পাওয়া যায়নি।</p>
-                                @endif
-                            </div>
-                            
-                            {{-- Popular Tab --}}
-                            <div class="tab-pane fade" id="popular">
-                                @if(isset($popularPosts) && count($popularPosts) > 0)
-                                    @foreach($popularPosts as $post)
-                                        <div class="news-item border-bottom py-2 d-flex align-items-start">
-                                            <div class="flex-shrink-0">
-                                                 <img  onerror="this.onerror=null;this.src='{{ $front_admin_url }}{{ $front_logo_name }}';" src="{{ $post->image ? $front_admin_url . $post->image : 'https://placehold.co/90x60/222/fff?text=No+Image' }}" 
-                                                      class="me-2 rounded-1" width="90" height="60" style="object-fit: cover;">
-                                            </div>
-                                            <div class="w-100">
-                                                @if($post->subtitle) <div class="news-subtitle">{{ $post->subtitle }}</div> @endif
-                                                <a href="{{ route('front.news.details', $post->slug) }}" class="small fw-bold text-dark hover-red lh-sm text-decoration-none">{{ $post->title }}</a>
-                                                    <small class="bangla-date"><i class="far fa-clock me-1"></i>{{ bangla_date($post->created_at) }}</small>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                @else
-                                    <p class="text-center text-muted small mt-3">কোনো খবর পাওয়া যায়নি।</p>
-                                @endif
-                            </div>
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="position-relative">
+                            <img src="https://placehold.co/600x400/png?text=Visa+News" class="card-img-top" alt="...">
+                            <span class="news-badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i> বিভ্রান্তিকর</span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">ভিসা ছাড়া আমেরিকা যাওয়ার সুযোগ?</a></h5>
+                            <p class="card-text small text-muted mt-2 d-none d-sm-block">খবরটি আংশিক সত্য তবে সবার জন্য উন্মুক্ত নয়...</p>
+                        </div>
+                        <div class="card-footer bg-white border-0 text-muted small py-3">
+                            <i class="far fa-clock text-warning me-1"></i> ১ দিন আগে
                         </div>
                     </div>
+                </div>
+                
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="position-relative">
+                            <img src="https://placehold.co/600x400/png?text=Science+Myth" class="card-img-top" alt="...">
+                            <span class="news-badge badge-fake"><i class="fas fa-times-circle me-1"></i> মিথ্যা</span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">চন্দ্রগ্রহণ নিয়ে ভুল তথ্য ছড়ানো হচ্ছে</a></h5>
+                            <p class="card-text small text-muted mt-2 d-none d-sm-block">নাসার নাম ব্যবহার করে ছড়ানো এই তথ্যটি ভিত্তিহীন...</p>
+                        </div>
+                        <div class="card-footer bg-white border-0 text-muted small py-3">
+                            <i class="far fa-clock text-danger me-1"></i> ২ দিন আগে
+                        </div>
+                    </div>
+                </div>
 
-                    {{-- সাইডবার অ্যাড --}}
-                    <div class="ad-container text-center mt-auto">
-                        <div class="animated-ad-box">
-                            <a href="https://zahidfsardersaddi.com/" target="_blank" rel="noopener">
-                                <img  onerror="this.onerror=null;this.src='{{ $front_admin_url }}{{ $front_logo_name }}';" src="{{$front_admin_url}}{{$front_personal_logo}}" alt="Ad" class="img-fluid">
-                            </a>
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="position-relative">
+                            <img src="https://placehold.co/600x400/png?text=Sports+News" class="card-img-top" alt="...">
+                            <span class="news-badge badge-true"><i class="fas fa-check-circle me-1"></i> সত্য</span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">বিশ্বকাপের সময়সূচি পরিবর্তন হয়নি</a></h5>
+                            <p class="card-text small text-muted mt-2 d-none d-sm-block">ফিফা নিশ্চিত করেছে যে পূর্বের সময়সূচিই বহাল থাকবে...</p>
+                        </div>
+                        <div class="card-footer bg-white border-0 text-muted small py-3">
+                            <i class="far fa-clock text-success me-1"></i> ৩ দিন আগে
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="position-relative">
+                            <img src="https://placehold.co/600x400/png?text=Tech+News" class="card-img-top" alt="...">
+                            <span class="news-badge badge-fake"><i class="fas fa-times-circle me-1"></i> মিথ্যা</span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">বিনামূল্যে ল্যাপটপ বিতরণের লিংকটি ভুয়া</a></h5>
+                            <p class="card-text small text-muted mt-2 d-none d-sm-block">সরকারি কোনো ওয়েবসাইট থেকে এমন ঘোষণা আসেনি...</p>
+                        </div>
+                        <div class="card-footer bg-white border-0 text-muted small py-3">
+                            <i class="far fa-clock text-danger me-1"></i> ৩ দিন আগে
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="position-relative">
+                            <img src="https://placehold.co/600x400/png?text=Climate" class="card-img-top" alt="...">
+                            <span class="news-badge badge-true"><i class="fas fa-check-circle me-1"></i> সত্য</span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">শৈত্যপ্রবাহের পূর্বাভাস দিয়েছে আবহাওয়া অফিস</a></h5>
+                            <p class="card-text small text-muted mt-2 d-none d-sm-block">আগামী সপ্তাহে তাপমাত্রা আরও কমতে পারে...</p>
+                        </div>
+                        <div class="card-footer bg-white border-0 text-muted small py-3">
+                            <i class="far fa-clock text-success me-1"></i> ৪ দিন আগে
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="position-relative">
+                            <img src="https://placehold.co/600x400/png?text=Health" class="card-img-top" alt="...">
+                            <span class="news-badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i> বিভ্রান্তিকর</span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">লেবু পানি পানেই ক্যান্সার মুক্তি?</a></h5>
+                            <p class="card-text small text-muted mt-2 d-none d-sm-block">বিশেষজ্ঞরা বলছেন এটি কেবল প্রতিরোধ ক্ষমতা বাড়ায়...</p>
+                        </div>
+                        <div class="card-footer bg-white border-0 text-muted small py-3">
+                            <i class="far fa-clock text-warning me-1"></i> ৫ দিন আগে
                         </div>
                     </div>
                 </div>
@@ -193,106 +191,53 @@
         </div>
     </section>
 
-   
-
-    {{-- ========================================================= --}}
-    {{-- ২. ক্লায়েন্ট সাইড ব্যাচ লোডিং (AJAX - Bottom Sections)    --}}
-    {{-- ========================================================= --}}
-    
-    <div id="dynamic-content-area">
-        {{-- এখানে জাভাস্ক্রিপ্ট এর মাধ্যমে ডাটা ধাপে ধাপে আসবে --}}
-    </div>
-
-    {{-- লোডার --}}
-    <div id="loader-area" class="d-none">
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
+    <section class="social-banner">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-4 mb-4 mb-lg-0 text-center text-lg-start">
+                    <h2 class="fw-bold mb-2">সোশ্যাল মিডিয়া</h2>
+                    <p class="mb-0 opacity-75">ভুয়া খবর রোধে আমাদের সাথে যুক্ত হোন।</p>
+                </div>
+                <div class="col-lg-8">
+                    <div class="row row-cols-2 row-cols-md-5 g-3">
+                        <div class="col">
+                            <a href="#" class="social-card">
+                                <i class="fab fa-facebook-f" style="color: #1877F2;"></i>
+                                <span>Facebook</span>
+                            </a>
+                        </div>
+                        <div class="col">
+                            <a href="#" class="social-card">
+                                <i class="fa-brands fa-x-twitter" style="color: #000;"></i>
+                                <span>X</span>
+                            </a>
+                        </div>
+                        <div class="col">
+                            <a href="#" class="social-card">
+                                <i class="fab fa-instagram" style="color: #E1306C;"></i>
+                                <span>Instagram</span>
+                            </a>
+                        </div>
+                        <div class="col">
+                            <a href="#" class="social-card">
+                                <i class="fab fa-youtube" style="color: #FF0000;"></i>
+                                <span>YouTube</span>
+                            </a>
+                        </div>
+                        <div class="col">
+                            <a href="#" class="social-card">
+                                <i class="fab fa-linkedin-in" style="color: #0077B5;"></i>
+                                <span>LinkedIn</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <p class="mt-2 fw-bold text-muted">আরও সংবাদ লোড হচ্ছে...</p>
-    </div>
- @include('front.home_page._partial.namazTimes')
+    </section>
  
 @endsection
 
 @section('scripts')
-<script>
-    $(document).ready(function() {
-        let currentStep = 1;
-        let isLoading = false;
-        let hasMore = true;
 
-        function loadMoreSections() {
-            if (isLoading || !hasMore) return;
-
-            isLoading = true;
-            $('#loader-area').removeClass('d-none');
-
-            $.ajax({
-                url: "{{ route('front.load.more.news') }}", 
-                type: "GET",
-                data: { step: currentStep },
-                success: function(response) {
-                    // ১. নতুন HTML যোগ করা
-                    let newContent = $(response.html).addClass('fade-in-section');
-                    $('#dynamic-content-area').append(newContent);
-
-                    // ২. স্লাইডার রি-ইনিশিয়ালাইজ করা (Fix for Auto Slider)
-                    
-                    // ফটো গ্যালারি (যদি থাকে)
-                    var photoSlider = document.querySelector('#photoGallerySlider');
-                    if (photoSlider) {
-                        new bootstrap.Carousel(photoSlider, {
-                            interval: 3000, 
-                            ride: 'carousel'
-                        });
-                    }
-
-                    // ============================================================
-                    // ফিক্স: ভিডিও গ্যালারির নতুন ৩টি স্লাইডার ইনিশিয়ালাইজ করা
-                    // ============================================================
-                    
-                    // ডেস্কটপ স্লাইডার
-                    var videoDesk = document.querySelector('#videoCarouselDesktop');
-                    if (videoDesk) {
-                        new bootstrap.Carousel(videoDesk, { interval: 4000, ride: 'carousel' });
-                    }
-
-                    // ট্যাবলেট স্লাইডার
-                    var videoTab = document.querySelector('#videoCarouselTablet');
-                    if (videoTab) {
-                        new bootstrap.Carousel(videoTab, { interval: 4000, ride: 'carousel' });
-                    }
-
-                    // মোবাইল স্লাইডার
-                    var videoMob = document.querySelector('#videoCarouselMobile');
-                    if (videoMob) {
-                        new bootstrap.Carousel(videoMob, { interval: 4000, ride: 'carousel' });
-                    }
-
-                    // ৩. ভেরিয়েবল আপডেট
-                    hasMore = response.hasMore;
-                    currentStep = response.nextStep;
-                    isLoading = false;
-                    
-                    // ৪. অটোমেটিক পরের সেকশন লোড (Recursive Call)
-                    if (hasMore) {
-                        setTimeout(function() {
-                            loadMoreSections();
-                        }, 300);
-                    } else {
-                        $('#loader-area').addClass('d-none');
-                    }
-                },
-                error: function() {
-                    isLoading = false;
-                    $('#loader-area').addClass('d-none');
-                    console.log('Failed to load news sections.');
-                }
-            });
-        }
-
-        // লোড শুরু করার কমান্ড
-        setTimeout(loadMoreSections, 1000);
-    });
-</script>
 @endsection
