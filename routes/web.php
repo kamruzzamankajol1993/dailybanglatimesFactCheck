@@ -17,6 +17,12 @@ Route::get('/clear', function() {
 Route::get('/contributor', [App\Http\Controllers\Front\FrontController::class, 'contributor'])->name('front.contributor');
 Route::controller(FrontController::class)->group(function () {
 
+
+Route::get('/fact-file', 'factFile')->name('front.factFile');
+Route::get('/media-literacy', 'mediaLiteracy')->name('front.mediaLiteracy');
+Route::get('/methodology', 'methodology')->name('front.methodology');
+
+
 Route::get('/load-more-news', 'getMoreNews')->name('front.load.more.news');
     Route::get('/', 'index')->name('front.index');
     Route::get('/about-us', 'aboutUs')->name('front.aboutUs');
@@ -28,8 +34,8 @@ Route::get('/load-more-news', 'getMoreNews')->name('front.load.more.news');
 
     Route::post('/contact-us-post', 'contactUsPost')->name('front.contactUsPost');
     Route::get('/services', 'services')->name('front.services');
-
-
+Route::post('/fact-check-submit-request', 'submitFactCheckRequest')->name('front.request.submit');
+Route::get('/fact-check-search', 'searchFactCheck')->name('front.factCheck.search');
     Route::get('/news-category/{slug}', 'newsList')->name('front.category.news');
   
     Route::get('/news/{slug}', 'newsDetails')->name('front.news.details');
@@ -53,6 +59,8 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name
 Route::post('/payment/success', [FrontController::class, 'paymentSuccess'])->name('payment.success');
 Route::post('/payment/fail', [FrontController::class, 'paymentFail'])->name('payment.fail');
 Route::post('/payment/cancel', [FrontController::class, 'paymentCancel'])->name('payment.cancel');
+
+Route::get('/latest-fact-checks', [FrontController::class, 'latestFactChecks'])->name('front.latest.news');
 
 
 

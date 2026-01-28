@@ -26,10 +26,263 @@ use App\Models\AboutUs;
 use App\Models\Administrative;
 use App\Models\AdministrativeCategory;
 use App\Models\Designation;
+use App\Models\FactCheck;
+use App\Models\FactCheckRequest;
+
+use Intervention\Image\Laravel\Facades\Image;
+use Illuminate\Support\Facades\File;
+
+
 class FrontController extends Controller
 {
 
 
+public function submitFactCheckRequest(Request $request)
+    {
+        // ১. ভ্যালিডেশন
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'link' => 'nullable|url',
+            'description' => 'nullable|string',
+            // ইমেজ ভ্যালিডেশন: ম্যাক্স ১ মেগাবাইট (1024 KB)
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:1024',
+        ], [
+            'title.required' => 'দয়া করে খবরের শিরোনাম দিন।',
+            'image.max' => 'ছবির সাইজ ১ মেগাবাইটের বেশি হতে পারবে না।',
+            'image.image' => 'ফাইলটি অবশ্যই একটি ছবি হতে হবে।',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ]);
+        }
+
+        try {
+            $imagePath = null;
+
+            // ২. ইমেজ আপলোড (Intervention Image ব্যবহার করে)
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
+                $imageName = 'req_' . time() . '.' . $image->getClientOriginalExtension();
+                
+                // ফোল্ডার পাথ (public/uploads/requests)
+                $destinationPath = public_path('uploads/requests');
+
+                // ফোল্ডার না থাকলে তৈরি করা
+                if (!File::isDirectory($destinationPath)) {
+                    File::makeDirectory($destinationPath, 0777, true, true);
+                }
+
+                // Intervention দিয়ে ইমেজ রিড করা
+                $img = Image::read($image->getRealPath());
+
+                // রিসাইজ করা (প্রয়োজন অনুযায়ী, যেমন সর্বোচ্চ ৮০০ পিক্সেল চওড়া)
+                // aspect ratio ঠিক রেখে রিসাইজ হবে
+                $img->resize(800, null, function ($constraint) {
+                    $constraint->aspectRatio();
+                });
+
+                // ইমেজ সেভ করা
+                $img->save($destinationPath . '/' . $imageName);
+                
+                // ডাটাবেসে সেভ করার জন্য পাথ
+                $imagePath = 'public/uploads/requests/' . $imageName;
+            }
+
+            // ৩. ডাটাবেসে সেভ
+            FactCheckRequest::create([
+                'title' => $request->title,
+                'link' => $request->link,
+                'description' => $request->description,
+                'image' => $imagePath,
+                'status' => 'pending',
+                'created_at' => now(),
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'আপনার রিপোর্টটি সফলভাবে জমা হয়েছে! আমরা এটি যাচাই করে দেখব।'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'সার্ভারে সমস্যা হয়েছে: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+// ==========================================
+    // ৩. ডাইনামিক সার্চ (Google API + Gemini + AJAX)
+    // ==========================================
+    public function searchFactCheck(Request $request)
+    {
+        $searchQuery = $request->input('query');
+        
+        if (empty($searchQuery)) {
+            return redirect()->back()->with('error', 'অনুগ্রহ করে কিছু লিখুন।');
+        }
+
+        // ১. লোকাল ডাটাবেসে খোঁজা
+        $results = FactCheck::with(['post', 'factCheckRequest'])
+            ->where(function($q) use ($searchQuery) {
+                $q->whereHas('post', function($p) use ($searchQuery) {
+                    $p->where('title', 'LIKE', "%{$searchQuery}%")
+                      ->orWhere('content', 'LIKE', "%{$searchQuery}%");
+                })
+                ->orWhereHas('factCheckRequest', function($r) use ($searchQuery) {
+                    $r->where('title', 'LIKE', "%{$searchQuery}%")
+                      ->orWhere('link', 'LIKE', "%{$searchQuery}%");
+                });
+            })
+            ->latest()
+            ->paginate(10); // প্যাজিনেশন ১০টি করে
+
+        // ২. যদি ডাটাবেসে না থাকে -> Google API এবং Gemini চেক
+        if ($results->isEmpty() && $results->currentPage() == 1) {
+            
+            // ক. প্রথমে Google Fact Check API চেক
+            $googleApiKey = 'AIzaSyAjzFQvC3DZ7to8VJwLYrqbFLd-Z6WBSKc'; // আপনার Google Key
+            $apiResponse = Http::get('https://factchecktools.googleapis.com/v1alpha1/claims:search', [
+                'query' => $searchQuery,
+                'key' => $googleApiKey,
+            ])->json();
+
+            $verdict = 'Unverified';
+            $confidence = 0.00;
+            $source = 'System';
+            $apiData = [];
+
+            // যদি Google এ ডাটা পাওয়া যায়
+            if (!empty($apiResponse['claims'])) {
+                $claim = $apiResponse['claims'][0];
+                $review = $claim['claimReview'][0] ?? [];
+                
+                $verdict = $review['textualRating'] ?? 'Verified (Google)';
+                $confidence = 1.00; // Google মানে ১০০% বিশ্বাসযোগ্য
+                $source = 'Google Fact Check Tools';
+                $apiData = $apiResponse;
+            } 
+            // খ. Google না পেলে -> Gemini AI চেক
+            else {
+                $geminiApiKey = 'AIzaSyAW-rKtkXBGGPXZtlcIt8_SYYGIYFZq2to'; // আপনার Gemini Key
+                $aiResult = $this->checkWithGemini($searchQuery, $searchQuery, $geminiApiKey);
+
+                $verdict = $aiResult['verdict'] ?? 'Unverified';
+                $confidence = $aiResult['confidence'] ?? 0.00;
+                $source = 'AI Auto Search';
+                $apiData = $aiResult;
+            }
+
+            // গ. ডাটাবেসে সেভ করা (যাতে ভবিষ্যতে লোকাল সার্চে আসে)
+            $newReq = FactCheckRequest::create([
+                'title' => $searchQuery,
+                'status' => 'pending',
+                'admin_verdict' => $verdict,
+                'created_at' => now(),
+            ]);
+
+            $factCheck = FactCheck::create([
+                'user_submitted_news_id' => $newReq->id,
+                'verdict' => $verdict,
+                'confidence_score' => $confidence,
+                'check_source' => $source,
+                'api_response_raw' => json_encode($apiData),
+            ]);
+
+            // ঘ. নতুন রেজাল্টটি কালেকশনে কনভার্ট করে প্যাজিনেটর বানানো (ভিউতে দেখানোর জন্য)
+            $item = $factCheck->load('factCheckRequest');
+            $results = new \Illuminate\Pagination\LengthAwarePaginator(
+                collect([$item]), 1, 10, 1, ['path' => route('front.factCheck.search'), 'query' => $request->query()]
+            );
+        }
+
+        // ৩. AJAX রিকোয়েস্ট হ্যান্ডলিং (প্যাজিনেশনের জন্য)
+        if ($request->ajax()) {
+            return view('front.search._search_results_partial', compact('results', 'searchQuery'))->render();
+        }
+
+        // ৪. সাধারণ পেজ লোড (সাইডবার সহ)
+        $recentCategories = \App\Models\Category::where('view_on_fact_check_site',1)
+             ->withCount('factCheckRequests')
+            ->orderBy('fact_check_requests_count', 'desc') // যেটায় বেশি রিকোয়েস্ট সেটা আগে দেখাবে
+            ->take(5)
+            ->get();
+        
+        
+        return view('front.search.customer_search_result', compact('results', 'searchQuery', 'recentCategories'));
+    }
+
+/**
+     * Gemini AI Helper Function
+     */
+    private function checkWithGemini($title, $content, $apiKey)
+    {
+        try {
+            $model = 'gemini-2.5-flash'; 
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+
+            // বর্তমান তারিখ (AI কে কনটেক্সট দেওয়ার জন্য)
+            $today = date('d M Y');
+
+            // কন্টেন্ট ক্লিন করা
+            $cleanContent = strip_tags($content);
+            $shortContent = mb_substr($cleanContent, 0, 800); 
+
+            // --- প্রম্পট তৈরি ---
+            $prompt = "You are a Senior Fact Checker. Today is {$today}.
+            
+            Analyze this News Claim:
+            Headline: '{$title}'
+            Content: '{$shortContent}'
+
+            **RULES:**
+            1. If the news cites official sources (Govt, ISPR, Ministers), verify as **'Likely True'**.
+            2. If it is a known rumor or impossible event, verify as **'False'**.
+            3. If verification is impossible without more info, verify as **'Unverified'**.
+
+            Output strictly JSON: {\"verdict\": \"Likely True\" or \"False\" or \"Unverified\", \"confidence\": 0.90}
+            Do not provide any markdown formatting or extra text.";
+
+            // API কল
+            $response = Http::post($url, [
+                'contents' => [['parts' => [['text' => $prompt]]]]
+            ]);
+
+            $result = $response->json();
+
+            // রেসপন্স পার্সিং
+            if (isset($result['candidates'][0]['content']['parts'][0]['text'])) {
+                $rawText = $result['candidates'][0]['content']['parts'][0]['text'];
+
+                // JSON বের করা (যদি Markdown এর ভেতরে থাকে)
+                if (preg_match('/\{.*\}/s', $rawText, $matches)) {
+                    $jsonString = $matches[0];
+                    $parsed = json_decode($jsonString, true);
+                    
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        return [
+                            'verdict' => $parsed['verdict'] ?? 'Unverified',
+                            'confidence' => $parsed['confidence'] ?? 0.50
+                        ];
+                    }
+                }
+                
+                // জেসন না পেলে ডিফল্ট রেসপন্স
+                return [
+                    'verdict' => 'Unverified',
+                    'confidence' => 0.00
+                ];
+            }
+            
+            return ['verdict' => 'System Error', 'confidence' => 0.00];
+
+        } catch (\Exception $e) {
+            return ['verdict' => 'Error', 'confidence' => 0.00];
+        }
+    }
 // =========================================================
     // ১. হেল্পার ফাংশন (ক্যাশিং এবং অপ্টিমাইজেশন সহ)
     // =========================================================
@@ -119,8 +372,21 @@ class FrontController extends Controller
         // ৫. র‍্যান্ডম নিউজ (bn_home_random)
         $randomNews = $this->getCachedPosts('bn_home_random', [110, 111, 113, 133], 6);
 
+        $recentFactChecks = FactCheck::with(['post', 'factCheckRequest'])
+        ->where(function($query) {
+            // ১. হয় এটি অ্যাডমিন পোস্ট (post_id আছে)
+            $query->whereNotNull('post_id')
+            // ২. অথবা এটি ইউজার রিকোয়েস্ট এবং তার স্ট্যাটাস 'checked'
+                  ->orWhereHas('factCheckRequest', function($q) {
+                      $q->where('status', 'checked');
+                  });
+        })
+        ->latest()
+        ->take(8) // ৮টি আইটেম দেখাবো
+        ->get();
+
         return view('front.home_page.index', compact(
-            'latestPosts', 'popularPosts', 'madamUnderNews', 'sliderPosts', 'randomNews'
+            'latestPosts', 'popularPosts', 'madamUnderNews', 'sliderPosts', 'randomNews','recentFactChecks'
         ));
     }
 
@@ -280,225 +546,72 @@ class FrontController extends Controller
     }
 
 public function newsList(Request $request, $slug)
-{
+    {
+        // ১. ক্যাটাগরি চেক
+        $category = Category::where('slug', $slug)
+            ->where('status', 1)
+            ->where('view_on_fact_check_site', 1)
+            ->firstOrFail();
 
+        // ২. বেস কুয়েরি (Post এবং Request দুই টেবিল থেকেই)
+        $query = \App\Models\FactCheck::with(['post.categories', 'factCheckRequest.category'])
+            ->where(function($mainQ) use ($category) {
+                // কন্ডিশন A: অ্যাডমিন পোস্ট
+                $mainQ->whereHas('post', function($q) use ($category) {
+                    $q->whereHas('categories', function($c) use ($category) {
+                        $c->where('categories.id', $category->id);
+                    })
+                    ->where('status', 'approved')
+                    ->where('trash_status', 0);
+                });
 
+                // অথবা
+                // কন্ডিশন B: ইউজার রিকোয়েস্ট (Checked)
+                $mainQ->orWhereHas('factCheckRequest', function($q) use ($category) {
+                    $q->where('category_id', $category->id)
+                      ->where('status', 'checked');
+                });
+            });
 
-set_time_limit(0);             
-    ini_set('memory_limit', '-1');
-
-// ///////////////////
-
-// $currentProcessingPage = 1;
-//     $currentApiPostId = null;
-//     $fixedUserId = 4668; // রিকোয়ারমেন্ট অনুযায়ী ফিক্সড ইউজার আইডি
-
-//     DB::beginTransaction();
-
-//     try {
-//         $page = 1;
-//         $lastPage = 1;
-
-//         do {
-//             $currentProcessingPage = $page;
+        // --- ৩. ফিল্টার লজিক (Verdict) ---
+        if ($request->has('verdict') && !empty($request->verdict)) {
+            // verdict অ্যারে হিসেবে আসবে (যেমন: ['fake', 'true'])
+            $verdicts = is_array($request->verdict) ? $request->verdict : explode(',', $request->verdict);
             
-//             // API কল
-//             $apiUrl = "https://bangla.dailybanglatimes.com/api/posts-list-api?category_id=3&page={$page}";
-//             $response = Http::timeout(60)
-//                 ->retry(3, 2000)->get($apiUrl);
+            $query->where(function($q) use ($verdicts) {
+                foreach ($verdicts as $v) {
+                    if ($v == 'true') {
+                        $q->orWhere('verdict', 'LIKE', '%True%')->orWhere('verdict', 'LIKE', '%Likely True%');
+                    } elseif ($v == 'fake') {
+                        $q->orWhere('verdict', 'LIKE', '%False%')->orWhere('verdict', 'LIKE', '%Fake%');
+                    } elseif ($v == 'misleading') {
+                        $q->orWhere('verdict', 'LIKE', '%Misleading%');
+                    }
+                }
+            });
+        }
 
-//             if ($response->successful()) {
-//                 $jsonData = $response->json();
-//                 $posts = $jsonData['data']['data'] ?? [];
-//                 $lastPage = $jsonData['data']['last_page'] ?? 1;
+        // --- ৪. ফিল্টার লজিক (Date) ---
+        if ($request->has('date_filter') && $request->date_filter != 'all') {
+            if ($request->date_filter == '24h') {
+                $query->where('created_at', '>=', \Carbon\Carbon::now()->subDay());
+            } elseif ($request->date_filter == '7d') {
+                $query->where('created_at', '>=', \Carbon\Carbon::now()->subDays(7));
+            } elseif ($request->date_filter == '30d') {
+                $query->where('created_at', '>=', \Carbon\Carbon::now()->subDays(30));
+            }
+        }
 
-//                 foreach ($posts as $apiPost) {
-//                     $currentApiPostId = $apiPost['id'];
-// // ======================================================
-//                     // নতুন কন্ডিশন: public_site ১ এবং year ২০২৫ হতে হবে
-//                     // ======================================================
-                    
-//                     // // ১. public_site চেক
-//                     // $isPublicSite = isset($apiPost['public_site']) && $apiPost['public_site'] == 0;
+        // ৫. ফাইনাল ডাটা ফেচ
+        $posts = $query->latest()->paginate(12)->withQueryString(); // withQueryString প্যাজিনেশন লিংক ঠিক রাখবে
 
-//                     // // ২. Year চেক (created_at থেকে)
-//                     // $postYear = isset($apiPost['created_at']) ? Carbon::parse($apiPost['created_at'])->year : null;
+        // ৬. AJAX রেসপন্স
+        if ($request->ajax()) {
+            return view('front.news._category_posts_partial', compact('posts'))->render();
+        }
 
-//                     // // যদি public_site ১ না হয় অথবা সাল ২০২৫ না হয়, তাহলে স্কিপ করুন
-//                     // if (!$isPublicSite || $postYear != 2026) {
-//                     //     continue;
-//                     // }
-//                     // ======================================================
-//                     // ১. ক্যাটাগরি চেক
-//                     $categoryName = $apiPost['category_name'] ?? null;
-//                     $categoryName = $apiPost['category_name'] ?? null;
-//                     $engCategoryName = $apiPost['eng_category_name'] ?? null;
-
-//                     if (!$categoryName) continue;
-
-//                     $localCategory = Category::where('name', $categoryName)->first();
-//                     // যদি ক্যাটাগরি না থাকে -> নতুন তৈরি করবে
-//                     if (!$localCategory) {
-//                         $localCategory = Category::create([
-//                             'name'      => $categoryName,
-//                             'eng_name'  => $engCategoryName ?? Str::slug($categoryName), // ইংরেজি নাম না থাকলে স্লাগ বসবে
-//                             'slug'      => Str::slug($categoryName), // আপনার মডেলে অটো স্লাগ আছে, তবুও সেফটির জন্য দেওয়া হলো
-//                             'status'    => 1, // ডিফল্ট অ্যাক্টিভ
-//                             'parent_id' => 0, // মেইন ক্যাটাগরি হিসেবে সেট হবে
-//                             'order_id'  => 0,
-//                         ]);
-//                     }
-
-//                     $categoryId = $localCategory->id;
-
-//                     // ২. ডাটা প্রিপারেশন (ম্যাপিং লজিক)
-                    
-//                     // Language Logic: public_site 1 ? bn : en
-//                     $language = (isset($apiPost['public_site']) && $apiPost['public_site'] == 1) ? 'bn' : 'en';
-
-//                     // Date Parsing
-//                     // যদি created_at না থাকে তবে বর্তমান সময় নিবে
-//                     $apiCreatedAt = isset($apiPost['created_at']) 
-//                                     ? Carbon::parse($apiPost['created_at']) 
-//                                     : Carbon::now('Asia/Dhaka');
-                    
-//                     // যদি updated_at null থাকে, তবে created_at এর সময়টাই নিবে
-//                     $apiUpdatedAt = !empty($apiPost['updated_at']) 
-//                                     ? Carbon::parse($apiPost['updated_at']) 
-//                                     : $apiCreatedAt;
-
-//                     // ৩. পোস্ট চেক (টাইটেল দিয়ে)
-//                     $existingPost = Post::withoutGlobalScope('active')
-//                                         ->where('title', $apiPost['title'])
-//                                         ->first();
-
-//                     // কমন ডাটা অ্যারে (Create এবং Update উভয়ের জন্য)
-//                     $postData = [
-//                         'category_id'       => $categoryId,
-//                         'updated_at'        => $apiPost['updated_at'] ? Carbon::parse($apiPost['updated_at']) : $apiCreatedAt,
-//                         'created_at'        => $apiPost['created_at'] ? Carbon::parse($apiPost['created_at']) : $apiCreatedAt,
-//                         'bangladesh_time'   => $apiCreatedAt,
-//                     ];
-
-//                     if ($existingPost) {
-
-//                     $existingPost->timestamps = false;
-//                         // --- UPDATE SCENARIO ---
-//                         $existingPost->update($postData);
-
-//                         // পিভট টেবিল রিসেট
-//                         PostCategory::where('post_id', $existingPost->id)->delete();
-//                         PostCategory::create([
-//                             'post_id'     => $existingPost->id,
-//                             'category_id' => $categoryId
-//                         ]);
-
-//                     } else {
-
-// $baseSlug = Str::slug($apiPost['title']);
-// $uniqueSlug = $baseSlug;
-//                         $counter = 1;
-
-//                         // লুপ চালিয়ে চেক করা হবে স্লাগটি ডাটাবেসে আছে কিনা (Soft delete সহ চেক করা হবে)
-//                         while (Post::withoutGlobalScopes()->where('slug', $uniqueSlug)->exists()) {
-//                             $uniqueSlug = $baseSlug . '-' . $counter;
-//                             $counter++;
-//                         }
-//                     $postDataOne = [
-//                         'category_id'       => $categoryId,
-//                         'old_id'          => $apiPost['id'],
-//                         'subtitle'          => $apiPost['op_title'],      // op_title is subtitle
-//                         'content'           => $apiPost['paragraph'],     // paragraph is content
-//                         'image'             => $apiPost['cover_image'],   // cover_image is image
-//                         'facebook_image'    => $apiPost['cover_image1'],  // cover_image1 is facebook_image
-//                         'image_caption'     => $apiPost['caption'],       // caption
-//                         'source'            => 'ডেইলি বাংলা টাইমস',      // source fixed
-//                         'language'          => $language,                 // bn or en
-//                         'view_count'        => $apiPost['total_share'] ?? 0, // total_share is view count
-//                         'slug'              => $uniqueSlug,
-//                         'updated_at'        => $apiPost['updated_at'] ? Carbon::parse($apiPost['updated_at']) : $apiCreatedAt,
-//                         'created_at'        => $apiPost['created_at'] ? Carbon::parse($apiPost['created_at']) : $apiCreatedAt,
-//                         'bangladesh_time'   => $apiCreatedAt,
-//                     ];
-                    
-//                         // --- INSERT SCENARIO ---
-//                         // Create এর জন্য অতিরিক্ত ফিল্ড যোগ করা হচ্ছে
-//                         $createData = array_merge($postDataOne, [
-//                             'title'         => $apiPost['title'],
-//                             'user_id'       => $fixedUserId, // 4668 always
-//                             'status'        => 1,            // Approved
-//                             'trash_status'  => 0,
-//                             'draft_status'  => 0,
-//                         ]);
-// $newPost = new Post();
-//     $newPost->timestamps = false;
-//                         $newPost = Post::create($createData);
-
-//                         // পিভট টেবিলে এন্ট্রি
-//                         PostCategory::create([
-//                             'post_id'     => $newPost->id,
-//                             'category_id' => $categoryId
-//                         ]);
-//                     }
-//                 }
-//             } else {
-//                 throw new \Exception("Failed to fetch data from API URL");
-//             }
-// sleep(1);
-//             $page++;
-
-//         } while ($page <= $lastPage);
-
-//         DB::commit();
-
-//         return response()->json([
-//             'status' => true,
-//             'message' => 'All posts synced successfully with new mapping.'
-//         ]);
-
-//     } catch (\Exception $e) {
-//         DB::rollBack();
-
-//         return response()->json([
-//             'status' => false,
-//             'message' => 'Error occurred during sync',
-//             'error_detail' => $e->getMessage(),
-//             'failed_at' => [
-//                 'page_number' => $currentProcessingPage,
-//                 'api_post_id' => $currentApiPostId
-//             ]
-//         ], 500);
-//     }
-
-
-///////////////////////////
-    // 1. Find the Category by slug
-    $category = Category::where('slug', $slug)->firstOrFail();
-
-    //dd($category->id);
-
-    // 2. Fetch Posts for this Category with Pagination
-    // We use whereHas because we are querying from the Post model perspective to ensure global scopes (trash/draft) apply correctly.
-    $posts = Post::whereHas('categories', function($q) use ($category) {
-                    $q->where('categories.id', $category->id);
-                })
-                ->where('status', 'approved')
-                ->where('draft_status', 0)
-                ->where('trash_status', 0)
-                       ->where('language', 'bn')
-                ->orderBy('id', 'desc')
-                ->paginate(12); // Grid layout, usually multiples of 3 or 4 are best
-              //  dd($posts);
-
-    // 3. Check if it's an AJAX request (Pagination Click)
-    if ($request->ajax()) {
-        // Only render the partial view with the new page's data
-        return view('front.news._category_posts_partial', compact('posts'))->render();
+        return view('front.news.list', compact('category', 'posts'));
     }
-
-    // 4. Normal Page Load
-    return view('front.news.list', compact('category', 'posts', 'slug'));
-}
 
 
 
@@ -557,60 +670,69 @@ public function newsDetailsOld($id)
 }
 
 public function newsDetails($slug)
-{
+    {
+        $post = null;
+        $isUserRequest = false; 
+        $factCheckResult = null; 
 
+        // ১. চেক করা এটি User Request (ID) কিনা
+        if (is_numeric($slug)) {
+            $req = \App\Models\FactCheckRequest::with(['category', 'factCheckResult'])
+                ->where('id', $slug)
+                ->where('status', 'checked')
+                ->first();
 
-
-     // 1. Fetch Post with necessary relationships
-    $post = Post::with([
-        'author.designation', 
-        'categories', // Load categories for breadcrumb
-        'comments' => function($q) {
-            $q->where('status', 1)
-              ->whereNull('parent_id')
-              ->with(['replies' => function($r) {
-                  $r->where('status', 1);
-              }]);
+            if ($req) {
+                $post = $req;
+                $isUserRequest = true;
+                $factCheckResult = $req->factCheckResult;
+            }
         }
-    ])
-    ->withCount([
-        'reactions as like_count' => function ($q) { $q->where('type', 'like'); },
-        'reactions as love_count' => function ($q) { $q->where('type', 'love'); },
-        'reactions as haha_count' => function ($q) { $q->where('type', 'haha'); },
-        'reactions as sad_count' => function ($q) { $q->where('type', 'sad'); },
-        'reactions as angry_count' => function ($q) { $q->where('type', 'angry'); }
-    ])
-           ->where('language', 'bn')
-    ->where('slug', $slug)
-    ->firstOrFail();
-//dd('ok');
-    // 2. Increment View Count
-    $post->increment('view_count');
 
-    // 3. Fetch Previous and Next Posts
-    $previousPost = Post::where('id', '<', $post->id)
-                        ->where('status', 'approved')
-                        ->where('draft_status', 0)
-                               ->where('language', 'bn')
-                        ->where('trash_status', 0)
-                        ->orderBy('id', 'desc')
-                        ->first();
+        // ২. যদি ID না হয় -> Post টেবিল (Slug) চেক করা
+        if (!$post) {
+            $post = Post::with(['author', 'categories', 'factCheck']) 
+                ->withCount([
+                    'reactions as like_count' => function ($q) { $q->where('type', 'like'); },
+                    'reactions as love_count' => function ($q) { $q->where('type', 'love'); },
+                ])
+                ->where('language', 'bn')
+                ->where('slug', $slug)
+                ->where('status', 'approved')
+                ->firstOrFail();
+            
+            $isUserRequest = false;
+            $factCheckResult = $post->factCheck; 
+            
+            $post->increment('view_count');
+        }
 
-    $nextPost = Post::where('id', '>', $post->id)
-                    ->where('status', 'approved')
-                    ->where('draft_status', 0)
-                    ->where('trash_status', 0)
-                           ->where('language', 'bn')
-                    ->orderBy('id', 'asc')
-                    ->first();
+        // ৩. সাইডবার: লেটেস্ট নিউজ
+        $latestNews = Post::with('factCheck')
+        ->has('factCheck')
+            ->where('status', 'approved')
+            ->where('language', 'bn')
+            ->where('trash_status', 0)
+            ->latest()
+            ->take(5)
+            ->get();
 
-    // 4. Sidebar Data
-    $latestNews = Post::where('status', 'approved')       ->where('language', 'bn')->where('trash_status', 0)->latest()->take(5)->get();
-    $popularNews = Post::where('status', 'approved')->where('language', 'bn')->where('trash_status', 0)->orderBy('view_count', 'desc')->take(5)->get();
+        // ৪. সাইডবার: ক্যাটাগরি (Tags এর পরিবর্তে)
+        // এখানে শুধুমাত্র ফ্যাক্ট চেক সাইটের জন্য এনাবল করা ক্যাটাগরিগুলো আনা হচ্ছে
+        $sidebarCategories = \App\Models\Category::where('status', 1)
+            ->where('view_on_fact_check_site', 1)
+            ->orderBy('order_id', 'asc')
+            ->take(5) // ১০-১৫টি ক্যাটাগরি দেখাবে
+            ->get();
 
-    return view('front.news.details', compact('post', 'previousPost', 'nextPost', 'latestNews', 'popularNews'));
-   
-}
+        return view('front.news.details', compact(
+            'post', 
+            'isUserRequest', 
+            'factCheckResult', 
+            'latestNews', 
+            'sidebarCategories' // <--- আপডেটেড ভেরিয়েবল
+        ));
+    }
 
 // Store Comment (Guest)
 public function storeComment(Request $request)
@@ -713,70 +835,95 @@ public function videoList(Request $request)
 }
 
 
-public function search(Request $request)
-{
-    $query = $request->input('q');
-    $categoryId = $request->input('category');
-    $timeFilter = $request->input('time');
-    $sort = $request->input('sort', 'desc');
+// ==========================================
+    // মেইন সার্চ ফাংশন (Database Based)
+    // ==========================================
+    public function search(Request $request)
+    {
+        $query = $request->input('q');
+        $categoryId = $request->input('category');
+        $timeFilter = $request->input('time');
+        $sort = $request->input('sort', 'desc');
 
+        // ১. বেস কুয়েরি: FactCheck টেবিল (Post + User Request)
+        $factChecks = FactCheck::with(['post.categories', 'factCheckRequest.category'])
+            ->where(function($mainQ) {
+                 // ক. অ্যাডমিন পোস্ট (Approved & Active)
+                 $mainQ->whereHas('post', function($p) {
+                     $p->where('status', 'approved')
+                       ->where('trash_status', 0)
+                       ->where('draft_status', 0)
+                       ->where('language', 'bn');
+                 })
+                 // খ. অথবা ইউজার রিকোয়েস্ট (Checked)
+                 ->orWhereHas('factCheckRequest', function($r) {
+                     $r->where('status', 'checked');
+                 });
+            });
 
-    //dd($query);
-
-    $posts = Post::query()
-        ->with('categories')
-        ->where('status', 'approved')
-           ->where('language', 'bn')
-        ->where('draft_status', 0)
-        ->where('trash_status', 0)
-        ->where('language', 'bn');
-
-    // 1. Keyword Search
-    if (!empty($query)) {
-        $posts->where(function($q) use ($query) {
-            $q->where('title', 'like', "%{$query}%")
-              ->orWhere('subtitle', 'like', "%{$query}%")
-              ->orWhere('content', 'like', "%{$query}%");
-        });
-    }
-
-    // 2. Category Filter
-    if (!empty($categoryId) && $categoryId != 'all') {
-        $posts->whereHas('categories', function($q) use ($categoryId) {
-            $q->where('categories.id', $categoryId);
-        });
-    }
-
-    // 3. Time Filter
-    if (!empty($timeFilter)) {
-        switch ($timeFilter) {
-            case '24h':
-                $posts->where('created_at', '>=', Carbon::now()->subDay());
-                break;
-            case '7d':
-                $posts->where('created_at', '>=', Carbon::now()->subDays(7));
-                break;
-            case '30d':
-                $posts->where('created_at', '>=', Carbon::now()->subDays(30));
-                break;
+        // ২. কি-ওয়ার্ড সার্চ (Keyword Search)
+        if (!empty($query)) {
+            $factChecks->where(function($q) use ($query) {
+                // Post টেবিলে খুঁজবে
+                $q->whereHas('post', function($p) use ($query) {
+                    $p->where('title', 'like', "%{$query}%")
+                      ->orWhere('subtitle', 'like', "%{$query}%")
+                      ->orWhere('content', 'like', "%{$query}%");
+                })
+                // Request টেবিলে খুঁজবে
+                ->orWhereHas('factCheckRequest', function($r) use ($query) {
+                    $r->where('title', 'like', "%{$query}%")
+                      ->orWhere('description', 'like', "%{$query}%")
+                      ->orWhere('link', 'like', "%{$query}%");
+                });
+            });
         }
+
+        // ৩. ক্যাটাগরি ফিল্টার (Category Filter)
+        if (!empty($categoryId) && $categoryId != 'all') {
+            $factChecks->where(function($q) use ($categoryId) {
+                $q->whereHas('post', function($p) use ($categoryId) {
+                     $p->whereHas('categories', function($c) use ($categoryId) {
+                         $c->where('categories.id', $categoryId);
+                     });
+                })
+                ->orWhereHas('factCheckRequest', function($r) use ($categoryId) {
+                    $r->where('category_id', $categoryId);
+                });
+            });
+        }
+
+        // ৪. সময় ফিল্টার (Time Filter)
+        if (!empty($timeFilter)) {
+            $date = null;
+            if ($timeFilter == '24h') $date = Carbon::now()->subDay();
+            elseif ($timeFilter == '7d') $date = Carbon::now()->subDays(7);
+            elseif ($timeFilter == '30d') $date = Carbon::now()->subDays(30);
+
+            if ($date) {
+                $factChecks->where('created_at', '>=', $date);
+            }
+        }
+
+        // ৫. সর্টিং (Sorting)
+        $factChecks->orderBy('created_at', $sort == 'old' ? 'asc' : 'desc');
+
+        // ৬. প্যাজিনেশন
+        $results = $factChecks->paginate(10)->withQueryString();
+
+        // ৭. AJAX রিকোয়েস্ট হ্যান্ডলিং
+        if ($request->ajax()) {
+            return view('front.search.search_results_partial', compact('results', 'query'))->render();
+        }
+
+        // ক্যাটাগরি লিস্ট (ফিল্টারের জন্য)
+        $categories = Category::where('status', 1) ->where('view_on_fact_check_site', 1)
+            ->orderBy('order_id', 'asc')
+       
+            ->get();
+
+        return view('front.search.search', compact('results', 'categories', 'query'));
     }
-
-    // 4. Sorting
-    $posts->orderBy('created_at', $sort == 'old' ? 'asc' : 'desc');
-
-    // 5. Pagination (Append query params)
-    $results = $posts->paginate(10)->withQueryString();
-
-    // 6. Handle AJAX Request
-    if ($request->ajax()) {
-        return view('front.search.search_results_partial', compact('results', 'query'))->render();
-    }
-
-    $categories = Category::where('status', 1)->select('id', 'name')->get();
-
-    return view('front.search.search', compact('results', 'categories', 'query'));
-}
 
 
 public function aboutUs()
@@ -993,5 +1140,90 @@ public function archive(Request $request)
         return back()->with('success', 'আপনার বার্তা সফলভাবে পাঠানো হয়েছে! শীঘ্রই আমরা যোগাযোগ করব।');
     }
 
+    // ==========================================
+    // সকল ফ্যাক্ট-চেক নিউজ (আরও দেখুন পেজ)
+    // ==========================================
+    public function latestFactChecks(Request $request)
+    {
+        // ১. ডামি ক্যাটাগরি অবজেক্ট (যাতে list.blade.php এর ডিজাইন ঠিক থাকে)
+        $category = (object) [
+            'name' => 'সাম্প্রতিক সব যাচাই', 
+            'slug' => 'latest',
+            'id' => 0
+        ];
 
+        // ২. মেইন কুয়েরি (Post এবং FactCheckRequest টেবিল থেকে)
+        $query = \App\Models\FactCheck::with(['post.categories', 'factCheckRequest.category'])
+            ->where(function($q) {
+                // কন্ডিশন A: অ্যাডমিন পোস্ট
+                $q->whereHas('post', function($p) {
+                     $p->where('status', 'approved')
+                       ->where('trash_status', 0)
+                       ->where('language', 'bn');
+                })
+                // অথবা
+                // কন্ডিশন B: ইউজার রিকোয়েস্ট (Checked)
+                ->orWhereHas('factCheckRequest', function($r) {
+                    $r->where('status', 'checked');
+                });
+            });
+
+        // --- ৩. ফিল্টার লজিক (Verdict - সত্য/মিথ্যা) ---
+        if ($request->has('verdict') && !empty($request->verdict)) {
+            $verdicts = is_array($request->verdict) ? $request->verdict : explode(',', $request->verdict);
+            
+            $query->where(function($q) use ($verdicts) {
+                foreach ($verdicts as $v) {
+                    if ($v == 'true') {
+                        $q->orWhere('verdict', 'LIKE', '%True%')->orWhere('verdict', 'LIKE', '%Likely True%');
+                    } elseif ($v == 'fake') {
+                        $q->orWhere('verdict', 'LIKE', '%False%')->orWhere('verdict', 'LIKE', '%Fake%');
+                    } elseif ($v == 'misleading') {
+                        $q->orWhere('verdict', 'LIKE', '%Misleading%');
+                    }
+                }
+            });
+        }
+
+        // --- ৪. ফিল্টার লজিক (Date - তারিখ) ---
+        if ($request->has('date_filter') && $request->date_filter != 'all') {
+            if ($request->date_filter == '24h') {
+                $query->where('created_at', '>=', \Carbon\Carbon::now()->subDay());
+            } elseif ($request->date_filter == '7d') {
+                $query->where('created_at', '>=', \Carbon\Carbon::now()->subDays(7));
+            } elseif ($request->date_filter == '30d') {
+                $query->where('created_at', '>=', \Carbon\Carbon::now()->subDays(30));
+            }
+        }
+
+        // ৫. ফাইনাল ডাটা ফেচ
+        $posts = $query->latest()->paginate(12)->withQueryString();
+
+        // ৬. AJAX রিকোয়েস্ট হ্যান্ডলিং (প্যাজিনেশন ও ফিল্টারের জন্য)
+        if ($request->ajax()) {
+            // আমরা আগের তৈরি করা পার্শিয়াল ভিউটিই ব্যবহার করব
+            return view('front.news._category_posts_partial', compact('posts'))->render();
+        }
+
+        // ৭. ভিউ লোড (list.blade.php রিইউজ করা হচ্ছে)
+        return view('front.news.list', compact('category', 'posts'));
+    }
+
+    // ফ্যাক্ট ফাইল পেজ
+    public function factFile()
+    {
+        // এখানে স্ট্যাটিক পেজ দেখানো হচ্ছে, পরবর্তীতে চাইলে ডাটাবেস থেকে (ExtraPage মডেল) ডাটা আনতে পারেন
+        return view('front.pages.fact_file');
+    }
+
+    // মিডিয়া লিটারেসি পেজ
+    public function mediaLiteracy()
+    {
+        return view('front.pages.media_literacy');
+    }
+
+public function methodology()
+    {
+        return view('front.pages.methodology');
+    }
 }

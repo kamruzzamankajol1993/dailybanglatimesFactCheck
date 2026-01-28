@@ -7,5 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Designation extends Model
 {
     use HasFactory;
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'eng_name', 'order_id'];
+
+    
 }

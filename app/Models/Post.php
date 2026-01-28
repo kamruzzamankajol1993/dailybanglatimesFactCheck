@@ -120,4 +120,9 @@ class Post extends Model
     {
         return $this->hasMany(Reaction::class);
     }
+
+    public function factCheck()
+    {
+        return $this->hasOne(FactCheck::class, 'post_id');
+    }
 }

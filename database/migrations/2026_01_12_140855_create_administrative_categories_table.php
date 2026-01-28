@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('administrative_categories', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('eng_name')->nullable();
             $table->string('slug')->nullable();
             $table->unsignedBigInteger('parent_id')->nullable();
             $table->string('image')->nullable();

@@ -29,6 +29,7 @@ class SystemInformation extends Model
         'main_url',
         'front_url',
         'english_url',
+        'fact_check_url',
         'tax',
         'charge',
         'usdollar',
@@ -41,6 +42,5 @@ class SystemInformation extends Model
         'english_footer_logo',
         'watermark',
         'madam_image',
-        'fact_check_url',
     ];
 }

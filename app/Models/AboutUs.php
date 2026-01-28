@@ -9,7 +9,8 @@ class AboutUs extends Model
     use HasFactory;
 
     protected $fillable = [
-       
+        'image',
+        'youtube_video_link',
         'des',
     ];
 }

@@ -93,21 +93,24 @@ view()->composer('front.include.headline', function ($view) {
             // --- 1. Dynamic Header Categories (Modified Logic) ---
     
     // সব অ্যাক্টিভ প্যারেন্ট ক্যাটাগরি order_id অনুসারে নিয়ে আসা হচ্ছে
-    $allCategories = Category::with('children') // <--- এই অংশটি নতুন যোগ করা হয়েছে
+    $header_categories = Category::with('children') // <--- এই অংশটি নতুন যোগ করা হয়েছে
                         ->whereNull('parent_id')
                         ->where('status', 1)
+                        ->where('view_on_fact_check_site',1)
                         ->orderBy('order_id', 'asc')
                         ->get();
 
+                       // dd($header_categories);
+
     // প্রথম ১৬টি ক্যাটাগরি মেইন মেনুর জন্য
-    $header_categories = $allCategories->take(15);
+   // $header_categories = $allCategories->take(15);
 
     // পরবর্তী ১০টি ক্যাটাগরি 'বিবিধ' ড্রপডাউনের জন্য (১৬টি বাদ দিয়ে পরের ১০টি)
-    $more_categories = $allCategories->skip(15)->take(10);
+    //$more_categories = $allCategories->skip(15)->take(10);
 
     // ভিউতে দুইটি ভেরিয়েবলই পাঠানো হলো
     view()->share('header_categories', $header_categories);
-    view()->share('more_categories', $more_categories);
+   // view()->share('more_categories', $more_categories);
 
 
             // --- 2. Social Links (New Logic) ---
@@ -122,7 +125,7 @@ view()->composer('front.include.headline', function ($view) {
 
                 $front_icon_name = $frontEndData->icon;
                 $front_logo_name = $frontEndData->logo;
-                $front_ins_name = $frontEndData->ins_name;
+                $front_ins_name = 'Fact Check Daily Bangla Times';
                 $front_ins_title = $frontEndData->title;
                 $front_ins_opening_hour = $frontEndData->open_hour;
                 $front_ins_add = $frontEndData->address;
@@ -154,10 +157,12 @@ view()->composer('front.include.headline', function ($view) {
                 $front_us_office_address = $frontEndData->us_office_address;
 
                 $front_email_one = $frontEndData->email_one;
+                $front_mobile_version_logo = $frontEndData->mobile_version_logo;
 
             } else {
                 // Default values if no data is found
                 $front_icon_name = '';
+                $front_mobile_version_logo='';
                 $front_logo_name = '';
                 $front_ins_name = '';
                 $front_ins_title = '';
@@ -193,6 +198,7 @@ view()->composer('front.include.headline', function ($view) {
             view()->share('front_icon_name', $front_icon_name);
             view()->share('front_logo_name', $front_logo_name);
             view()->share('front_ins_name', $front_ins_name);
+            view()->share('front_mobile_version_logo', $front_mobile_version_logo);
             
             // Fixed: Added this line to solve the "Undefined variable" error
             view()->share('front_ins_title', $front_ins_title);

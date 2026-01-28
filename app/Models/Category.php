@@ -18,6 +18,7 @@ class Category extends Model
         'image',
         'status',
         'order_id',
+        'view_on_fact_check_site',
     ];
 
     protected $guarded = ['id'];
@@ -50,11 +51,15 @@ class Category extends Model
      */
     public function children()
     {
-        return $this->hasMany(Category::class, 'parent_id', 'id');
+        return $this->hasMany(Category::class, 'parent_id');
     }
 
     public function posts()
     {
         return $this->belongsToMany(Post::class, 'post_category', 'category_id', 'post_id');
+    }
+    public function factCheckRequests()
+    {
+        return $this->hasMany(FactCheckRequest::class, 'category_id');
     }
 }

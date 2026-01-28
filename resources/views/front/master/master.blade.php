@@ -20,12 +20,12 @@
         <meta property="og:url" content="{{ url()->current() }}">
         <meta property="og:title" content="{{ $front_ins_name }}">
         <meta property="og:description" content="{{ $front_ins_d }}">
-        <meta property="og:image" content="{{ $front_admin_url }}{{ $front_logo_name }}">
+        <meta property="og:image" content="{{ $front_admin_url }}{{ $front_mobile_version_logo }}">
 
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:title" content="{{ $front_ins_name }}">
         <meta name="twitter:description" content="{{ $front_ins_d }}">
-        <meta name="twitter:image" content="{{ $front_admin_url }}{{ $front_logo_name }}">
+        <meta name="twitter:image" content="{{ $front_admin_url }}{{ $front_mobile_version_logo }}">
     @endif
    
     <title>@yield('title')</title>
@@ -86,7 +86,7 @@
                 hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
             };
             const dateStr = now.toLocaleString('bn-BD', options);
-            document.getElementById('bengali-date').textContent = dateStr + " (বিএসটি)";
+            document.getElementById('bengali-date').textContent = dateStr ;
         }
         updateDateTime();
         setInterval(updateDateTime, 1000); 

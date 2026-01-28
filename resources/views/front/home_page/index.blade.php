@@ -5,7 +5,37 @@
 @endsection
 
 @section('css')
+<style>
+    /* Fact Check Badges */
+    .news-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 5px 12px;
+        border-radius: 30px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        color: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        z-index: 10;
+    }
+    
+    .badge-true {
+        background-color: #198754; /* Green */
+    }
+    
+    .badge-fake {
+        background-color: #dc3545; /* Red */
+    }
 
+    /* Card Hover Effect */
+    .card {
+        transition: transform 0.3s ease;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+    }
+</style>
 @endsection
 
 @section('body')
@@ -26,21 +56,64 @@
                     <div class="tab-content" id="myTabContent">
                         <div class="tab-pane fade show active" id="search" role="tabpanel">
                             <div class="search-box">
-                                <form class="d-flex shadow-sm rounded-3 overflow-hidden">
-                                    <input class="form-control form-control-lg border-0 rounded-0 ps-4" type="search" placeholder="কীওয়ার্ড লিখুন (যেমন: পদ্মা সেতু ফাটল)...">
-                                    <button class="btn btn-danger px-4 fw-bold rounded-0" type="submit">খুঁজুন</button>
-                                </form>
-                            </div>
+        {{-- ফর্ম অ্যাকশন আপডেট করা হয়েছে --}}
+        <form action="{{ route('front.factCheck.search') }}" method="GET" class="d-flex shadow-sm rounded-3 overflow-hidden">
+            
+            {{-- ইনপুট ফিল্ডে name="query" যোগ করা হয়েছে --}}
+            <input class="form-control form-control-lg border-0 rounded-0 ps-4" 
+                   type="search" 
+                   name="query" 
+                   placeholder="কীওয়ার্ড লিখুন (যেমন: পদ্মা সেতু ফাটল)..." 
+                   required>
+            
+            <button class="btn btn-danger px-4 fw-bold rounded-0" type="submit">খুঁজুন</button>
+        </form>
+    </div>
                         </div>
                         <div class="tab-pane fade" id="upload" role="tabpanel">
-                            <div class="upload-box text-start">
-                                <form>
-                                    <div class="mb-3"><input type="text" class="form-control" placeholder="সন্দেহজনক খবরের লিংক দিন অথবা টাইটেল লিখুন..."></div>
-                                    <div class="mb-3"><input type="file" class="form-control"></div>
-                                    <div class="d-grid"><button type="submit" class="btn btn-primary fw-bold">যাচাইয়ের জন্য সাবমিট করুন</button></div>
-                                </form>
-                            </div>
-                        </div>
+    <div class="upload-box text-start p-4">
+        <h5 class="mb-3 fw-bold text-primary"><i class="fas fa-file-upload me-2"></i>তথ্য যাচাইয়ের জন্য পাঠান</h5>
+        
+        <form id="factCheckRequestForm" enctype="multipart/form-data">
+            @csrf
+            
+            {{-- Title --}}
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">খবরের শিরোনাম <span class="text-danger">*</span></label>
+                <input type="text" name="title" class="form-control" placeholder="যেমন: পদ্মা সেতুতে ফাটল..." required>
+                <div class="invalid-feedback d-block text-danger small" id="error-title"></div>
+            </div>
+
+            {{-- Link --}}
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">লিংক (যদি থাকে)</label>
+                <input type="url" name="link" class="form-control" placeholder="https://example.com/news...">
+                <div class="invalid-feedback d-block text-danger small" id="error-link"></div>
+            </div>
+
+            {{-- Image --}}
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">ছবি / স্ক্রিনশট (সর্বোচ্চ ১ মেগাবাইট)</label>
+                <input type="file" name="image" class="form-control" accept="image/*">
+                <div class="form-text text-muted small">শুধুমাত্র jpg, png, webp ফরম্যাট গ্রহণযোগ্য।</div>
+                <div class="invalid-feedback d-block text-danger small" id="error-image"></div>
+            </div>
+
+            {{-- Description --}}
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">বিস্তারিত বিবরণ</label>
+                <textarea name="description" class="form-control" rows="3" placeholder="ঘটনাটি সম্পর্কে বিস্তারিত লিখুন..."></textarea>
+            </div>
+
+            {{-- Submit Button --}}
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary fw-bold py-2" id="btnSubmitRequest">
+                    <i class="fas fa-paper-plane me-1"></i> রিপোর্ট জমা দিন
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
                     </div> 
                 </div>
             </div>
@@ -54,138 +127,105 @@
                     <h2 class="text-dark fw-bold mb-1">সাম্প্রতিক ফ্যাক্ট-চেক</h2>
                     <div class="bg-danger" style="width: 60px; height: 3px;"></div>
                 </div>
+                {{-- সব দেখার লিংক (যদি আর্কাইভ পেজ থাকে) --}}
                 <a href="#" class="btn btn-outline-danger btn-sm rounded-pill px-3">সব দেখুন <i class="fas fa-arrow-right ms-1"></i></a>
             </div>
             
             <div class="row g-3 g-md-4">
                 
-                <div class="col-6 col-md-4 col-lg-3">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="position-relative">
-                            <img src="https://placehold.co/600x400/png?text=Fake+Bridge" class="card-img-top" alt="...">
-                            <span class="news-badge badge-fake"><i class="fas fa-times-circle me-1"></i> মিথ্যা</span>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">পদ্মা সেতুতে ফাটল ধরেছে— ভাইরাল ভিডিওটি ভুয়া</a></h5>
-                            <p class="card-text small text-muted mt-2 d-none d-sm-block">ভিডিওটি মূলত ভিয়েতনামের একটি সেতুর...</p>
-                        </div>
-                        <div class="card-footer bg-white border-0 text-muted small py-3">
-                            <i class="far fa-clock text-danger me-1"></i> ২ ঘন্টা আগে
-                        </div>
-                    </div>
-                </div>
+                @forelse($recentFactChecks as $check)
+                    @php
+                        // ১. ডাটা প্রসেসিং (Post নাকি User Request থেকে এসেছে?)
+                        $title = 'শিরোনাম পাওয়া যায়নি';
+                        $image = 'https://placehold.co/600x400/png?text=No+Image';
+                        $detailsLink = '#';
+                        $shortDesc = '';
 
-                <div class="col-6 col-md-4 col-lg-3">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="position-relative">
-                            <img src="https://placehold.co/600x400/png?text=Education" class="card-img-top" alt="...">
-                            <span class="news-badge badge-true"><i class="fas fa-check-circle me-1"></i> সত্য</span>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">নতুন শিক্ষাক্রমের প্রশিক্ষণ শুরু</a></h5>
-                            <p class="card-text small text-muted mt-2 d-none d-sm-block">মন্ত্রণালয়ের নোটিশ অনুযায়ী কাল থেকে শুরু...</p>
-                        </div>
-                        <div class="card-footer bg-white border-0 text-muted small py-3">
-                            <i class="far fa-clock text-success me-1"></i> ৫ ঘন্টা আগে
-                        </div>
-                    </div>
-                </div>
+                        if ($check->post) {
+                            // যদি এডমিন পোস্ট হয়
+                            $title = $check->post->title;
+                            if($check->post->image) {
+                                $image = $front_admin_url.$check->post->image; // Public ফোল্ডারের জন্য
+                            }
+                            $detailsLink = route('front.news.details', $check->post->slug);
+                            $shortDesc = Str::limit(strip_tags($check->post->content), 60);
+                        } 
+                        elseif ($check->factCheckRequest) {
+                            // যদি ইউজার রিকোয়েস্ট হয়
+                            $title = $check->factCheckRequest->title ?? $check->factCheckRequest->link;
 
-                <div class="col-6 col-md-4 col-lg-3">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="position-relative">
-                            <img src="https://placehold.co/600x400/png?text=Visa+News" class="card-img-top" alt="...">
-                            <span class="news-badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i> বিভ্রান্তিকর</span>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">ভিসা ছাড়া আমেরিকা যাওয়ার সুযোগ?</a></h5>
-                            <p class="card-text small text-muted mt-2 d-none d-sm-block">খবরটি আংশিক সত্য তবে সবার জন্য উন্মুক্ত নয়...</p>
-                        </div>
-                        <div class="card-footer bg-white border-0 text-muted small py-3">
-                            <i class="far fa-clock text-warning me-1"></i> ১ দিন আগে
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-6 col-md-4 col-lg-3">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="position-relative">
-                            <img src="https://placehold.co/600x400/png?text=Science+Myth" class="card-img-top" alt="...">
-                            <span class="news-badge badge-fake"><i class="fas fa-times-circle me-1"></i> মিথ্যা</span>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">চন্দ্রগ্রহণ নিয়ে ভুল তথ্য ছড়ানো হচ্ছে</a></h5>
-                            <p class="card-text small text-muted mt-2 d-none d-sm-block">নাসার নাম ব্যবহার করে ছড়ানো এই তথ্যটি ভিত্তিহীন...</p>
-                        </div>
-                        <div class="card-footer bg-white border-0 text-muted small py-3">
-                            <i class="far fa-clock text-danger me-1"></i> ২ দিন আগে
-                        </div>
-                    </div>
-                </div>
+                          //  dd($check->factCheckRequest->image);
+                            if($check->factCheckRequest->image) {
+                                $image = $front_admin_url.$check->factCheckRequest->image; // public ফোল্ডারের জন্য
+                            }
+$detailsLink = route('front.news.details', $check->factCheckRequest->id);
+                          //  dd($image);
+                            $shortDesc = Str::limit($check->factCheckRequest->description, 60);
+                        }
 
-                <div class="col-6 col-md-4 col-lg-3">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="position-relative">
-                            <img src="https://placehold.co/600x400/png?text=Sports+News" class="card-img-top" alt="...">
-                            <span class="news-badge badge-true"><i class="fas fa-check-circle me-1"></i> সত্য</span>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">বিশ্বকাপের সময়সূচি পরিবর্তন হয়নি</a></h5>
-                            <p class="card-text small text-muted mt-2 d-none d-sm-block">ফিফা নিশ্চিত করেছে যে পূর্বের সময়সূচিই বহাল থাকবে...</p>
-                        </div>
-                        <div class="card-footer bg-white border-0 text-muted small py-3">
-                            <i class="far fa-clock text-success me-1"></i> ৩ দিন আগে
-                        </div>
-                    </div>
-                </div>
+                        // ২. ভার্ডিক্ট ব্যাজ লজিক (Verdict Badge)
+                        $verdict = $check->verdict;
+                        $badgeClass = 'bg-secondary';
+                        $icon = 'fa-question-circle';
+                        $verdictText = $verdict;
 
-                <div class="col-6 col-md-4 col-lg-3">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="position-relative">
-                            <img src="https://placehold.co/600x400/png?text=Tech+News" class="card-img-top" alt="...">
-                            <span class="news-badge badge-fake"><i class="fas fa-times-circle me-1"></i> মিথ্যা</span>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">বিনামূল্যে ল্যাপটপ বিতরণের লিংকটি ভুয়া</a></h5>
-                            <p class="card-text small text-muted mt-2 d-none d-sm-block">সরকারি কোনো ওয়েবসাইট থেকে এমন ঘোষণা আসেনি...</p>
-                        </div>
-                        <div class="card-footer bg-white border-0 text-muted small py-3">
-                            <i class="far fa-clock text-danger me-1"></i> ৩ দিন আগে
-                        </div>
-                    </div>
-                </div>
+                        if (stripos($verdict, 'True') !== false || stripos($verdict, 'Likely True') !== false) {
+                            $badgeClass = 'badge-true'; // CSS ক্লাস নিচে দেওয়া আছে
+                            $icon = 'fa-check-circle';
+                            $verdictText = 'সত্য';
+                        } elseif (stripos($verdict, 'False') !== false || stripos($verdict, 'Fake') !== false) {
+                            $badgeClass = 'badge-fake';
+                            $icon = 'fa-times-circle';
+                            $verdictText = 'মিথ্যা';
+                        } elseif (stripos($verdict, 'Misleading') !== false) {
+                            $badgeClass = 'bg-warning text-dark';
+                            $icon = 'fa-exclamation-triangle';
+                            $verdictText = 'বিভ্রান্তিকর';
+                        }
+                        // --- নতুন: Altered এর জন্য ---
+        elseif (stripos($verdict, 'Altered') !== false || stripos($verdict, 'Edited') !== false) {
+            $badgeClass = 'bg-altered'; 
+            $verdictText = 'বিকৃত (Altered)';
+        }
 
-                <div class="col-6 col-md-4 col-lg-3">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="position-relative">
-                            <img src="https://placehold.co/600x400/png?text=Climate" class="card-img-top" alt="...">
-                            <span class="news-badge badge-true"><i class="fas fa-check-circle me-1"></i> সত্য</span>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">শৈত্যপ্রবাহের পূর্বাভাস দিয়েছে আবহাওয়া অফিস</a></h5>
-                            <p class="card-text small text-muted mt-2 d-none d-sm-block">আগামী সপ্তাহে তাপমাত্রা আরও কমতে পারে...</p>
-                        </div>
-                        <div class="card-footer bg-white border-0 text-muted small py-3">
-                            <i class="far fa-clock text-success me-1"></i> ৪ দিন আগে
-                        </div>
-                    </div>
-                </div>
+                        // ৩. সময় ফরম্যাট (Time)
+                        $timeAgo = $check->created_at->diffForHumans();
+                    @endphp
 
-                <div class="col-6 col-md-4 col-lg-3">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="position-relative">
-                            <img src="https://placehold.co/600x400/png?text=Health" class="card-img-top" alt="...">
-                            <span class="news-badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i> বিভ্রান্তিকর</span>
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold lh-base"><a href="#" class="text-dark">লেবু পানি পানেই ক্যান্সার মুক্তি?</a></h5>
-                            <p class="card-text small text-muted mt-2 d-none d-sm-block">বিশেষজ্ঞরা বলছেন এটি কেবল প্রতিরোধ ক্ষমতা বাড়ায়...</p>
-                        </div>
-                        <div class="card-footer bg-white border-0 text-muted small py-3">
-                            <i class="far fa-clock text-warning me-1"></i> ৫ দিন আগে
+                    <div class="col-6 col-md-4 col-lg-3">
+                        {{-- ১. কার্ডে position-relative ক্লাস যোগ করা হয়েছে --}}
+                        <div class="card h-100 border-0 shadow-sm position-relative">
+                            
+                            <div class="position-relative">
+                                {{-- ২. ইমেজের ওপর থেকে <a> ট্যাগ সরিয়ে ফেলা হয়েছে (stretched-link এর কারণে এটি দরকার নেই) --}}
+                                <img src="{{ $image }}" class="card-img-top" alt="{{ $title }}" style="height: 160px; object-fit: cover;">
+                                
+                                {{-- Verdict Badge --}}
+                                <span class="news-badge {{ $badgeClass }}">
+                                    <i class="fas {{ $icon }} me-1"></i> {{ $verdictText }}
+                                </span>
+                            </div>
+
+                            <div class="card-body">
+                                <h5 class="card-title fw-bold lh-base" style="font-size: 1rem;">
+                                    {{-- ৩. এখানে stretched-link ক্লাস যোগ করা হয়েছে --}}
+                                    <a href="{{ $detailsLink }}" class="text-dark text-decoration-none stretched-link">{{ Str::limit($title, 50) }}</a>
+                                </h5>
+                                <p class="card-text small text-muted mt-2 d-none d-sm-block">
+                                    {{ $shortDesc }}
+                                </p>
+                            </div>
+
+                            <div class="card-footer bg-white border-0 text-muted small py-3">
+                                <i class="far fa-clock me-1"></i> {{ $timeAgo }}
+                            </div>
                         </div>
                     </div>
-                </div>
+                @empty
+                    <div class="col-12 text-center py-5">
+                        <p class="text-muted">বর্তমানে কোনো ফ্যাক্ট-চেক ডাটা নেই।</p>
+                    </div>
+                @endforelse
 
             </div>
         </div>
@@ -200,36 +240,38 @@
                 </div>
                 <div class="col-lg-8">
                     <div class="row row-cols-2 row-cols-md-5 g-3">
+                       @foreach($social_links as $link)
+                        @php
+                            $title = strtolower($link->title);
+                            $iconClass = 'fas fa-link'; // ডিফল্ট আইকন
+                            $color = '#555'; // ডিফল্ট কালার
+
+                            // টাইটেল চেক করে আইকন এবং কালার সেট করা হচ্ছে
+                            if(str_contains($title, 'facebook')) {
+                                $iconClass = 'fab fa-facebook-f';
+                                $color = '#1877F2';
+                            } elseif(str_contains($title, 'twitter') || $title == 'x') {
+                                $iconClass = 'fa-brands fa-x-twitter';
+                                $color = '#000000';
+                            } elseif(str_contains($title, 'instagram')) {
+                                $iconClass = 'fab fa-instagram';
+                                $color = '#E1306C';
+                            } elseif(str_contains($title, 'youtube')) {
+                                $iconClass = 'fab fa-youtube';
+                                $color = '#FF0000';
+                            } elseif(str_contains($title, 'linkedin')) {
+                                $iconClass = 'fab fa-linkedin-in';
+                                $color = '#0077B5';
+                            }
+                        @endphp
+
                         <div class="col">
-                            <a href="#" class="social-card">
-                                <i class="fab fa-facebook-f" style="color: #1877F2;"></i>
-                                <span>Facebook</span>
+                            <a href="{{ $link->link }}" target="_blank" class="social-card">
+                                <i class="{{ $iconClass }}" style="color: {{ $color }};"></i>
+                                <span>{{ $link->title }}</span>
                             </a>
                         </div>
-                        <div class="col">
-                            <a href="#" class="social-card">
-                                <i class="fa-brands fa-x-twitter" style="color: #000;"></i>
-                                <span>X</span>
-                            </a>
-                        </div>
-                        <div class="col">
-                            <a href="#" class="social-card">
-                                <i class="fab fa-instagram" style="color: #E1306C;"></i>
-                                <span>Instagram</span>
-                            </a>
-                        </div>
-                        <div class="col">
-                            <a href="#" class="social-card">
-                                <i class="fab fa-youtube" style="color: #FF0000;"></i>
-                                <span>YouTube</span>
-                            </a>
-                        </div>
-                        <div class="col">
-                            <a href="#" class="social-card">
-                                <i class="fab fa-linkedin-in" style="color: #0077B5;"></i>
-                                <span>LinkedIn</span>
-                            </a>
-                        </div>
+                    @endforeach
                     </div>
                 </div>
             </div>
@@ -239,5 +281,85 @@
 @endsection
 
 @section('scripts')
+{{-- SweetAlert (যদি মাস্টার ব্লেডে না থাকে) --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<script>
+    $(document).ready(function() {
+        
+        // AJAX Form Submission
+        $('#factCheckRequestForm').on('submit', function(e) {
+            e.preventDefault();
+
+            let form = this;
+            let formData = new FormData(form);
+            let submitBtn = $('#btnSubmitRequest');
+            let originalBtnText = submitBtn.html();
+
+            // ক্লিয়ার এরর মেসেজ
+            $('.invalid-feedback').text('');
+            
+            // লোডিং স্টেট
+            submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> আপলোড হচ্ছে...');
+
+            $.ajax({
+                url: "{{ route('front.request.submit') }}",
+                type: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    // বাটন রিসেট
+                    submitBtn.prop('disabled', false).html(originalBtnText);
+
+                    if (response.status === true) {
+                        // সফল সাবমিশন
+                        form.reset();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'ধন্যবাদ!',
+                            text: response.message,
+                            confirmButtonColor: '#198754',
+                            timer: 3000
+                        });
+                    } else {
+                        // ভ্যালিডেশন এরর
+                        if (response.errors) {
+                            $.each(response.errors, function(key, val) {
+                                $('#error-' + key).text(val[0]);
+                            });
+                            // ইউজারকে জানানো
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'তথ্য অসম্পূর্ণ',
+                                text: 'দয়া করে লাল চিহ্নিত ঘরগুলো সঠিক তথ্য দিয়ে পূরণ করুন।',
+                                confirmButtonColor: '#ffc107'
+                            });
+                        } else {
+                            // অন্য কোনো এরর (যেমন সার্ভার এরর)
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'দুঃখিত!',
+                                text: response.message || 'কিছু ভুল হয়েছে।',
+                                confirmButtonColor: '#dc3545'
+                            });
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    // সার্ভার বা নেটওয়ার্ক এরর
+                    submitBtn.prop('disabled', false).html(originalBtnText);
+                    console.error(xhr);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'সার্ভার এরর!',
+                        text: 'অনাকাঙ্ক্ষিত কোনো সমস্যা হয়েছে। দয়া করে পরে আবার চেষ্টা করুন।',
+                        confirmButtonColor: '#dc3545'
+                    });
+                }
+            });
+        });
+
+    });
+</script>
 @endsection

@@ -1,5 +1,5 @@
 @php
-    // Bangla Date Converter Function (Check if exists to avoid error)
+    // Bangla Date Converter Helper
     if (!function_exists('convertToBanglaDate')) {
         function convertToBanglaDate($date) {
             $eng_num = ['0','1','2','3','4','5','6','7','8','9'];
@@ -15,40 +15,78 @@
 @endphp
 
 <div class="d-flex flex-column gap-4">
-    @forelse($results as $post)
+    @forelse($results as $item)
+        @php
+            // ডাটা প্রসেসিং (Post vs Request)
+            $title = '';
+            $link = '#';
+            $image = 'https://placehold.co/180x110/ddd/333?text=No+Image';
+            $date = $item->created_at->format('d M, Y');
+            $catName = 'জেনারেল';
+            $desc = '';
+
+            // কন্ডিশন ১: অ্যাডমিন পোস্ট
+            if ($item->post) {
+                $title = $item->post->title;
+                $link = route('front.news.details', $item->post->slug);
+                
+                if($item->post->image) {
+                    $image = $front_admin_url . $item->post->image;
+                }
+                
+                $desc = $item->post->subtitle ?? strip_tags($item->post->content);
+                if($item->post->categories->first()) {
+                    $catName = $item->post->categories->first()->name;
+                }
+            } 
+            // কন্ডিশন ২: ইউজার রিকোয়েস্ট
+            elseif ($item->factCheckRequest) {
+                $title = $item->factCheckRequest->title ?? 'User Request';
+                $link = route('front.news.details', $item->factCheckRequest->id);
+                
+                if($item->factCheckRequest->image) {
+                     // ইমেজ পাথ হ্যান্ডলিং (আপনার কনফিগারেশন অনুযায়ী এডজাস্ট করুন)
+                     // যদি এডমিন প্যানেলের মতো পাথ সেভ হয়:
+                     $image = $front_admin_url . $item->factCheckRequest->image;
+                     // অথবা যদি সরাসরি পাবলিক ফোল্ডারে থাকে: asset('uploads/requests/...')
+                }
+
+                $desc = $item->factCheckRequest->description;
+                if($item->factCheckRequest->category) {
+                    $catName = $item->factCheckRequest->category->name;
+                }
+            }
+        @endphp
+
         <div class="search-item d-flex align-items-start border-bottom pb-3">
             <div class="flex-shrink-0 me-3">
-                <a href="{{ route('front.news.details', $post->slug) }}">
-                    <img src="{{ $post->image ? $front_admin_url.$post->image : 'https://placehold.co/180x110/ddd/333?text=No+Image' }}" 
+                <a href="{{ $link }}">
+                    <img src="{{ $image }}" 
                          class="rounded-1 object-fit-cover" 
-                         width="180" height="110" alt="{{ $post->title }}">
+                         width="180" height="110" alt="{{ $title }}">
                 </a>
             </div>
             <div class="flex-grow-1">
-                <a href="{{ route('front.news.details', $post->slug) }}" class="text-decoration-none text-dark">
+                <a href="{{ $link }}" class="text-decoration-none text-dark">
                     <h5 class="fw-bold hover-red mb-1">
-                        {{-- Basic Highlight Logic --}}
+                        {{-- Search Keyword Highlight --}}
                         @if(!empty($query))
-                            {!! str_ireplace($query, '<span class="search-highlight">'.$query.'</span>', $post->title) !!}
+                            {!! str_ireplace($query, '<span class="bg-warning text-dark px-1">'.$query.'</span>', $title) !!}
                         @else
-                            {{ $post->title }}
+                            {{ $title }}
                         @endif
                     </h5>
                 </a>
                 <div class="search-meta mb-2">
                     <span class="text-danger fw-bold">
-                        {{ $post->categories->first()->name ?? 'খবর' }}
+                        {{ $catName }}
                     </span>
                     <span class="mx-1">•</span>
                     <i class="far fa-clock small"></i> 
-                    {{ convertToBanglaDate($post->created_at->format('d M, Y')) }}
+                    {{ convertToBanglaDate($date) }}
                 </div>
                 <p class="text-secondary small mb-0 text-truncate-2">
-                    @if($post->subtitle)
-                        {{ Str::limit($post->subtitle, 150) }}
-                    @else
-                        {{ Str::limit(strip_tags($post->content), 150) }}
-                    @endif
+                    {{ Str::limit($desc, 150) }}
                 </p>
             </div>
         </div>
@@ -60,7 +98,7 @@
     @endforelse
 </div>
 
-{{-- Custom Pagination Design (No Bootstrap) --}}
+{{-- Pagination --}}
 @if ($results->hasPages())
 <div class="mt-5 d-flex justify-content-center custom-pagination-wrapper">
     <div class="custom-pagination">
