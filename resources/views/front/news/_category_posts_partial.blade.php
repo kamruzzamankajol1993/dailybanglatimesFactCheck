@@ -7,35 +7,50 @@
             $date = $item->created_at->format('d M, Y');
             $link = '#';
             $desc = '';
+            $rawImagePath = '';
 
-            // যদি পোস্ট থেকে আসে
+            // ডাটা সোর্স নির্ধারণ (Post নাকি FactCheckRequest?)
             if ($item->post) {
                 $title = $item->post->title;
-                $image = $item->post->image ? $front_admin_url.$item->post->image : $image;
+                $rawImagePath = $item->post->image;
                 $link = route('front.news.details', $item->post->slug);
                 $desc = Str::limit(strip_tags($item->post->content), 100);
             } 
-            // যদি ইউজার রিকোয়েস্ট থেকে আসে
             elseif ($item->factCheckRequest) {
                 $title = $item->factCheckRequest->title ?? 'User Request';
-                $image = $item->factCheckRequest->image ? $front_admin_url.$item->factCheckRequest->image : $image;
-                $link = route('front.news.details', $item->factCheckRequest->id); // বা ডিটেইলস পেজ থাকলে সেটার লিংক
-                $desc = Str::limit($item->factCheckRequest->description, 100);
+                $rawImagePath = $item->factCheckRequest->image;
+                $link = route('front.news.details', $item->factCheckRequest->id);
+                $desc = Str::limit(strip_tags($item->factCheckRequest->description), 100);
             }
 
-            // ২. ভার্ডিক্ট ব্যাজ কালার
+            // ২. ইমেজ প্রদর্শন লজিক (admin_url বনাম fact_check_url)
+            if($rawImagePath) {
+                // যদি পাথের মধ্যে 'uploads/requests' থাকে তবে fact_check_url (লোকাল পাথ) ব্যবহার হবে
+                if (str_contains($rawImagePath, 'uploads/requests')) {
+                         $image = $front_admin_url . $rawImagePath;
+                } else {
+              
+                     $image = $front_fact_check_url . $rawImagePath;
+                }
+            }
+
+            // ৩. ভার্ডিক্ট ব্যাজ কালার ও টেক্সট
             $verdict = $item->verdict;
             $badgeClass = 'bg-secondary';
             $verdictText = $verdict;
 
             if (stripos($verdict, 'True') !== false || stripos($verdict, 'Likely True') !== false) {
-                $badgeClass = 'bg-success'; $verdictText = 'সত্য';
+                $badgeClass = 'bg-success'; 
+                $verdictText = 'সত্য';
             } elseif (stripos($verdict, 'False') !== false || stripos($verdict, 'Fake') !== false) {
-                $badgeClass = 'bg-danger'; $verdictText = 'মিথ্যা';
+                $badgeClass = 'bg-danger'; 
+                $verdictText = 'মিথ্যা';
             } elseif (stripos($verdict, 'Misleading') !== false) {
-                $badgeClass = 'bg-warning text-dark'; $verdictText = 'বিভ্রান্তিকর';
+                $badgeClass = 'bg-warning text-dark'; 
+                $verdictText = 'বিভ্রান্তিকর';
             } elseif (stripos($verdict, 'Altered') !== false) {
-                $badgeClass = 'bg-info text-dark'; $verdictText = 'বিকৃত';
+                $badgeClass = 'bg-info text-dark'; 
+                $verdictText = 'বিকৃত';
             }
         @endphp
 
@@ -55,7 +70,7 @@
                         <i class="far fa-calendar-alt me-1"></i> {{ $date }}
                     </div>
                     <h5 class="fw-bold mb-2">
-                        <a href="{{ $link }}" class="text-dark text-decoration-none">{{ Str::limit($title, 60) }}</a>
+                        <a href="{{ $link }}" class="text-dark text-decoration-none stretched-link">{{ Str::limit($title, 60) }}</a>
                     </h5>
                     <p class="small text-muted mb-3">{{ $desc }}</p>
                     <a href="{{ $link }}" class="text-danger fw-bold small text-decoration-none">

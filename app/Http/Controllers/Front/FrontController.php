@@ -68,7 +68,7 @@ public function submitFactCheckRequest(Request $request)
                 $imageName = 'req_' . time() . '.' . $image->getClientOriginalExtension();
                 
                 // ফোল্ডার পাথ (public/uploads/requests)
-                $destinationPath = public_path('uploads/requests');
+                $destinationPath = public_path('uploads/front_requests');
 
                 // ফোল্ডার না থাকলে তৈরি করা
                 if (!File::isDirectory($destinationPath)) {
@@ -88,7 +88,7 @@ public function submitFactCheckRequest(Request $request)
                 $img->save($destinationPath . '/' . $imageName);
                 
                 // ডাটাবেসে সেভ করার জন্য পাথ
-                $imagePath = 'public/uploads/requests/' . $imageName;
+                $imagePath = 'public/uploads/front_requests/' . $imageName;
             }
 
             // ৩. ডাটাবেসে সেভ
