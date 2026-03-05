@@ -1,10 +1,10 @@
 <nav class="navbar navbar-expand-lg main-navbar d-none d-lg-block sticky-top">
     <div class="container justify-content-center">
-        <ul class="navbar-nav">
+        <ul class="navbar-nav align-items-center">
             {{-- হোম --}}
             <li class="nav-item"><a class="nav-link" href="{{ url('/') }}">হোম</a></li>
             
-            {{-- ক্যাটাগরি (এখানে ডায়নামিক ক্যাটাগরিগুলো লুপ করা হয়েছে) --}}
+            {{-- ক্যাটাগরি --}}
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="{{ route('front.latest.news') }}" role="button" data-bs-toggle="dropdown" aria-expanded="false">ক্যাটাগরি</a>
                 <ul class="dropdown-menu">
@@ -36,6 +36,38 @@
 
             {{-- যোগাযোগ --}}
             <li class="nav-item"><a class="nav-link" href="{{ route('front.contactUs') }}">যোগাযোগ</a></li>
+
+            {{-- আমাদের নেটওয়ার্ক (অটো ড্রপডাউন) --}}
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle fw-bold" href="#" id="networkDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" >
+                    <i class="fas fa-th-large me-1"></i> আমাদের নেটওয়ার্ক
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2" aria-labelledby="networkDropdown" style="min-width: 220px; border-top: 3px solid var(--accent) !important;">
+                    <li class="px-3 py-1 small text-muted text-uppercase fw-bold" style="font-size: 10px; letter-spacing: 0.5px;">নিউজ পোর্টাল</li>
+                    
+                    {{-- বাংলা নিউজ সাইট --}}
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center py-2" href="{{ $front_front_url }}" target="_blank">
+                            <div class="bg-danger rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
+                                <i class="fas fa-newspaper text-white" style="font-size: 11px;"></i>
+                            </div>
+                            <span>বাংলা নিউজপেপার সাইট</span>
+                        </a>
+                    </li>
+
+                    <li><hr class="dropdown-divider mx-2"></li>
+
+                    {{-- ইংরেজি নিউজ সাইট --}}
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center py-2" href="{{ $front_english_url }}" target="_blank">
+                            <div class="bg-dark rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
+                                <i class="fas fa-globe text-white" style="font-size: 11px;"></i>
+                            </div>
+                            <span>English News Site</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
         </ul>
     </div>
 </nav>

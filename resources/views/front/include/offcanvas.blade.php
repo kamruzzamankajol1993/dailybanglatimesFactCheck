@@ -64,6 +64,23 @@
             <li class="nav-item">
                 <a class="nav-link text-dark border-bottom py-2 fw-bold" href="{{ route('front.contactUs') }}">যোগাযোগ</a>
             </li>
+            <li class="nav-item dropdown mt-2">
+                <a class="nav-link dropdown-toggle py-2 fw-bold text-white px-3 rounded" href="#" data-bs-toggle="dropdown" style="background-color: var(--accent);">
+                    <i class="fas fa-th-large me-1"></i> আমাদের নেটওয়ার্ক
+                </a>
+                <ul class="dropdown-menu border-0 shadow-sm mt-1" style="background-color: #f8f9fa;">
+                    <li>
+                        <a class="dropdown-item py-2" href="{{ $front_front_url }}" target="_blank">
+                            <i class="fas fa-newspaper text-danger me-2"></i> বাংলা নিউজপেপার সাইট
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2" href="{{ $front_english_url }}" target="_blank">
+                            <i class="fas fa-globe text-dark me-2"></i> English News Site
+                        </a>
+                    </li>
+                </ul>
+            </li>
         </ul>
 
         {{-- Footer Social Icons --}}

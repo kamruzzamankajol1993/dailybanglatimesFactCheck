@@ -1,7 +1,7 @@
 <footer>
     <div class="container">
         <div class="row">
-            {{-- Column 1: Logo & Description --}}
+            {{-- Column 1: Logo, Language Buttons & Description --}}
             <div class="col-lg-4 mb-5">
                 <a href="{{ url('/') }}" class="d-block mb-4 text-decoration-none">
                     @if(!empty($front_mobile_version_logo))
@@ -10,6 +10,12 @@
                         <h4 class="text-white en-font">{{ $front_ins_name }}</h4>
                     @endif
                 </a>
+
+                <div class="mb-4">
+                    <a href="{{ $front_front_url }}" class="btn btn-sm btn-outline-light me-2 px-3">বাংলা</a>
+                    <a href="{{ $front_english_url }}" class="btn btn-sm btn-outline-light px-3">English</a>
+                </div>
+
                 <p class="small text-secondary pe-lg-4">
                     {{ Str::limit($front_ins_d, 350) }}
                 </p>
@@ -42,11 +48,24 @@
                 </ul>
             </div>
 
-            {{-- Column 4: Contact (UPDATED) --}}
+            {{-- Column 4: Head Office (US Office) & Contact --}}
             <div class="col-lg-4 mb-4">
                 <h5 class="text-white mb-3">যোগাযোগ</h5>
                 <ul class="list-unstyled small text-secondary">
                     
+                    {{-- US Office Address (Head Office) --}}
+                    @if(!empty($front_us_office_address))
+                    <li class="mb-3">
+                        <div class="d-flex">
+                            <i class="fas fa-university mt-1 me-2 text-danger"></i> 
+                            <div>
+                                <strong class="d-block text-white">হেড অফিস (ইউএসএ):</strong>
+                                {{ $front_us_office_address }}
+                            </div>
+                        </div>
+                    </li>
+                    @endif
+
                     {{-- Bangladesh Address --}}
                     @if(!empty($front_ins_add))
                     <li class="mb-3">
@@ -60,19 +79,6 @@
                     </li>
                     @endif
 
-                    {{-- US Office Address (New) --}}
-                    @if(!empty($front_us_office_address))
-                    <li class="mb-3">
-                        <div class="d-flex">
-                            <i class="fas fa-globe-americas mt-1 me-2 text-danger"></i> 
-                            <div>
-                                <strong class="d-block text-white">ইউএস অফিস:</strong>
-                                {{ $front_us_office_address }}
-                            </div>
-                        </div>
-                    </li>
-                    @endif
-
                     {{-- Email --}}
                     @if(!empty($front_ins_email))
                     <li class="mb-2">
@@ -81,11 +87,19 @@
                     </li>
                     @endif
 
-                    {{-- Phone --}}
+                    {{-- Primary Phone --}}
                     @if(!empty($front_ins_phone))
                     <li class="mb-2">
                         <i class="fas fa-phone me-2 text-danger"></i> 
                         {{ $front_ins_phone }}
+                    </li>
+                    @endif
+
+                    {{-- Secondary Phone (From AppServiceProvider) --}}
+                    @if(!empty($front_ins_phone_one))
+                    <li class="mb-2">
+                        <i class="fas fa-phone-alt me-2 text-danger"></i> 
+                        {{ $front_ins_phone_one }}
                     </li>
                     @endif
                 </ul>
